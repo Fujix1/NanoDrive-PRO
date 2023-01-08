@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "type_traits": "cpp",
+    "bmp.h": "c",
+    "oledfont.h": "c",
+    "limits": "cpp"
+  }
+}
