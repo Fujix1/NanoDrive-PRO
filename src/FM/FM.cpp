@@ -151,7 +151,7 @@ void FMChip::writeRaw(byte data, boolean a0=0, boolean a1=0 ) {
 
 }
 
-void FMChip::set_register(byte addr, byte data, boolean a1=0 ) {
+void FMChip::set_register(byte addr, byte data, boolean a1=0) {
 
   /*
     書き込みモードの待ち時間
@@ -197,11 +197,11 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0 ) {
   Tick.delay_500ns();
   WR_HIGH;
 
-/*
+
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {
-      Tick.delay_500ns(); // SSG
+//      Tick.delay_500ns(); // SSG
     } else {
       Tick.delay_us(7); // リズム + FM 1-3
     } 
@@ -212,8 +212,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0 ) {
       // ADPCM
     } 
   }
-*/
-  
+/*
   // FMとリズムはビジーフラグチェック
   if (addr>=0x10 && addr<=0xb6) {
     // rdychk ビジーフラグチェック
@@ -226,7 +225,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0 ) {
     } while (BUSY==HIGH);
     gpio_init(digitalPinToPort(D7), GPIO_MODE_OUT_PP, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D7));
   }
-
+*/
   //---------------------------------------
   // data
   
@@ -239,7 +238,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0 ) {
   WR_LOW;
   Tick.delay_100ns();
 
-  // LOW
+ // LOW
   GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
   GPIO_BC(GPIOA) =
       GPIO_PIN_4 | GPIO_PIN_3 | GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0;
@@ -259,11 +258,11 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0 ) {
              $11 - $1D  83 = 10.375 us
     ADPCM    $00 - $10   0
   */
-/*
+
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {
-      Tick.delay_500ns(); // SSG
+//      Tick.delay_500ns(); // SSG
     } else if (addr >= 0x21 && addr <= 0x9e) {
       Tick.delay_us(15); // 
     } else if (addr >= 0xa0 && addr <= 0xb6) {
@@ -282,27 +281,27 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0 ) {
       // ADPCM
     } 
   }
-*/
   
   A0_LOW;
   if (a1) {
     A1_LOW;
   }
-
+/*
   // FMとリズムはビジーフラグチェック
   if (addr>=0x10 && addr<=0xb6) {
     // rdychk ビジーフラグチェック
     gpio_init(digitalPinToPort(D7), GPIO_MODE_IN_FLOATING, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D7));
     do {
       RD_LOW;
-      Tick.delay_500ns();
+      Tick.delay_250ns();
       BUSY = digitalRead(D7);
       RD_HIGH;
     } while (BUSY==HIGH);
     gpio_init(digitalPinToPort(D7), GPIO_MODE_OUT_PP, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D7));
   }
-
+ */
 }
+
 
 void FMChip::checkBRDY() {
   // ADPCM 書き込み完了フラグチェック
@@ -311,7 +310,7 @@ void FMChip::checkBRDY() {
   A1_HIGH;
   do {
     RD_LOW;
-    Tick.delay_500ns();
+    Tick.delay_250ns();
     BRDY = digitalRead(D3);
     RD_HIGH;
   } while (BRDY==LOW);

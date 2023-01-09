@@ -25,6 +25,35 @@ void TickClass::delay_100ns() {
   asm("NOP");
 }
 
+void TickClass::delay_250ns() {
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+  asm("NOP");
+}
+
 
 void TickClass::delay_500ns() {
   asm("NOP");

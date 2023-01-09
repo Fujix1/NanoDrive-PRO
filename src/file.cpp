@@ -666,10 +666,10 @@ void vgmProcess() {
       case 0x57:  // YM2608 port 1
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
-        // DRAM アクセスを 8bit に上書き
-        /*if (reg == 0x01) {
-          dat = dat || 0b10;
-        }*/
+        // D5 CPU管理メモリを外部メモリに上書き
+        //if (reg == 0x00) {
+        //  dat = dat || 0b00100000;
+        //}
         FM.set_register(reg, dat, 1);
         break;
       case 0x5A:  // YM3812
@@ -754,16 +754,16 @@ void vgmProcess() {
               FM.set_register(0x04, 0xff, 1);
               FM.set_register(0x05, 0xff, 1);
 
-              for (uint32_t i=0; i < size - 0x8; i++) {
+              for (uint32_t i=0; i < (size - 0x8); i++) {
                 FM.set_register(0x08, get_vgm_ui8(), 1); // データ書き込み
                 FM.set_register(0x10, 0x1b, 1); // フラグBRDYをリセットする
                 FM.set_register(0x10, 0x13, 1); // フラグEOS, BRDYのみイネーブルにする
-                //FM.checkBRDY();
+//                FM.checkBRDY();
               }
 
-              FM.set_register(0x10, 0x00, 1); // FLAG 全部 0
-              FM.set_register(0x10, 0x80, 1); // IRQ RESET
-              FM.set_register(0x00, 0x01, 1); // ADPCM リセット
+              FM.set_register(0x00, 0x00, 1); // 終了プロセス
+              FM.set_register(0x10, 0x80, 1); // 
+
             break;
           }
         }

@@ -15,6 +15,7 @@ class TickClass {
   unsigned long micros2();
   unsigned long millis2();
   void delay_100ns();
+  void delay_250ns();
   void delay_500ns();
   void delay_us(uint32_t);
   void delay_ms(uint32_t);
