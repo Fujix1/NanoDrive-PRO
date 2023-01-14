@@ -666,10 +666,6 @@ void vgmProcess() {
       case 0x57:  // YM2608 port 1
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
-        // D5 CPU管理メモリを外部メモリに上書き
-        //if (reg == 0x00) {
-        //  dat = dat || 0b00100000;
-        //}
         FM.set_register(reg, dat, 1);
         break;
       case 0x5A:  // YM3812
@@ -714,9 +710,10 @@ void vgmProcess() {
           if (dummy != 0x66)
             break;
           uint8_t type = get_vgm_ui8(); // data type
-          uint32_t size = get_vgm_ui32(); // size of data, in bytes
+          uint32_t dataSize = get_vgm_ui32(); // size of data, in bytes
 
           switch (type) {
+            case 0x00: 
             case 0x81: // YM2608 DELTA-T ROM data
               //  data block format for ROM dumps:
               //   rr rr rr rr (32 bits) = size of the entire ROM
@@ -725,45 +722,73 @@ void vgmProcess() {
 
               uint32_t entireRomSize = get_vgm_ui32(); // size of the entire ROM 
               uint32_t startAddr = get_vgm_ui32(); // start address of data
-
+/*
               FM.set_register(0x00, 0x01, 1); // ADPCM リセット
               FM.set_register(0x10, 0x17, 1); // FLAG 制御
               FM.set_register(0x10, 0x80, 1); // IRQ リセット
               FM.set_register(0x00, 0x60, 1); // 外部メモリー設定、書き込み開始
+*/ 
+              FM.set_register(0x00, 0x01, 1); // ADPCM Reset
+              Tick.delay_us(46);
+
+              // RAM Writing process from "The Scheme"
+              FM.set_register(0x00, 0x21, 1);
+              Tick.delay_us(46);
+              FM.set_register(0x00, 0x20, 1); 
+              Tick.delay_us(46);
+              FM.set_register(0x10, 0x00, 1); 
+              Tick.delay_us(46);
+              FM.set_register(0x10, 0x80, 1); // IRQ Reset
+              Tick.delay_us(46);
+              FM.set_register(0x00, 0x61, 1); 
+              Tick.delay_us(46);
+              FM.set_register(0x00, 0x68, 1); 
+              Tick.delay_us(46);
+
               if (VGMinfo.DRAMIs8bits) {
                 FM.set_register(0x01, 0x02, 1); // RAM TYPE x 8 bits
               } else {
                 FM.set_register(0x01, 0x00, 1); // RAM TYPE x 1 bit 
               }
+              Tick.delay_us(46);
 
-              // リミットアドレス L/H 
+              // Limit Address L/H 
               FM.set_register(0x0c, 0xff, 1);
+              Tick.delay_us(46);
               FM.set_register(0x0d, 0xff, 1);
 
-              // スタートアドレス L/H
+              // Start Address L/H
               uint32_t start;
+              uint32_t stop;
               if (VGMinfo.DRAMIs8bits) {
                 start = startAddr >> 5;
+                stop = 0xffff;
               } else {
                 start = startAddr >> 2;
+                //stop = start + (dataSize >>2) -1;
+                stop = 0xffff;
               }
               FM.set_register(0x02, start & 0xff, 1);
+              Tick.delay_us(46);
               FM.set_register(0x03, (start >> 8) & 0xff, 1);
+              Tick.delay_us(46);
 
-              // ストップアドレス L/H
-              FM.set_register(0x04, 0xff, 1);
-              FM.set_register(0x05, 0xff, 1);
+              // Stop Address L/H
+              FM.set_register(0x04, stop & 0xff, 1);
+              Tick.delay_us(46);
+              FM.set_register(0x05, (stop >> 8) & 0xff, 1);
+              Tick.delay_us(46);
 
-              for (uint32_t i=0; i < (size - 0x8); i++) {
+              for (uint32_t i=0; i < (dataSize - 0x8); i++) {
                 FM.set_register(0x08, get_vgm_ui8(), 1); // データ書き込み
-                FM.set_register(0x10, 0x1b, 1); // フラグBRDYをリセットする
-                FM.set_register(0x10, 0x13, 1); // フラグEOS, BRDYのみイネーブルにする
-//                FM.checkBRDY();
+                Tick.delay_us(46);
+                //FM.set_register(0x10, 0x1b, 1); // フラグBRDYをリセットする
+                //FM.set_register(0x10, 0x13, 1); // フラグEOS, BRDYのみイネーブルにする
+                //FM.checkBRDY();
               }
 
               FM.set_register(0x00, 0x00, 1); // 終了プロセス
-              FM.set_register(0x10, 0x80, 1); // 
-
+              Tick.delay_us(100);
             break;
           }
         }

@@ -72,40 +72,7 @@ void FMChip::reset(void) {
   Tick.delay_us(100);  // at least 12 cycles // at 1.5MHz: 0.67us
   IC_HIGH;
   Tick.delay_us(100);
-
-  //FMChip::set_register(0x01, 0x06, 1);
-  /*
-
-    size_t size = 256000;
-
-    FMChip::set_register(0x10, 0x80, 1);
-    FMChip::set_register(0x00, 0x61, 1);
-    FMChip::set_register(0x00, 0x60, 1);
-    FMChip::set_register(0x01, 0x02, 1);
-
-    // リミットアドレス L/H
-    size_t dramLim = 256000;
-    FMChip::set_register(0x0c, dramLim & 0xff, 1);
-    FMChip::set_register(0x0d, (dramLim >> 8) & 0xff, 1);
-    // スタートアドレス L/H
-    size_t startAddr = 0x00;
-    FMChip::set_register(0x02, startAddr & 0xff, 1);
-    FMChip::set_register(0x03, (startAddr >> 8) & 0xff, 1);
-
-    // ストップアドレス L/H
-    size_t stopAddr = 0xff;
-    FMChip::set_register(0x04, stopAddr & 0xff, 1);
-    FMChip::set_register(0x05, (stopAddr >> 8) & 0xff, 1);
-
-    for (size_t i=0; i<size; i++) {
-      FMChip::set_register(0x08, 0, 1); // データ書き込み
-      FMChip::set_register(0x10, 0x1b, 1); // フラグBRDYをリセットする
-      FMChip::set_register(0x10, 0x13, 1); // フラグEOS, BRDYのみイネーブルにする
-    }
-
-    FMChip::set_register(0x00, 0x00, 1); // 終了プロセス
-    FMChip::set_register(0x10, 0x80, 1); //
-  */
+  
 }
 
 void FMChip::writeRaw(byte data, boolean a0=0, boolean a1=0 ) {
@@ -153,6 +120,12 @@ void FMChip::writeRaw(byte data, boolean a0=0, boolean a1=0 ) {
 
 void FMChip::set_register(byte addr, byte data, boolean a1=0) {
 
+  /* リズムオフ
+  if (a1==0 && addr==0x10) {
+    data = 0x80;
+  }
+  */
+
   /*
     書き込みモードの待ち時間
 
@@ -175,7 +148,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
     1/8MHz = 0.125 us
   */
 
-  PinStatus BUSY = LOW;
+  //PinStatus BUSY = LOW;
 
   // LOW
   GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
@@ -197,11 +170,10 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   Tick.delay_500ns();
   WR_HIGH;
 
-
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {
-//      Tick.delay_500ns(); // SSG
+      Tick.delay_500ns(); // SSG
     } else {
       Tick.delay_us(7); // リズム + FM 1-3
     } 
@@ -210,6 +182,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
       Tick.delay_us(7); // FM 4-6
     } else {
       // ADPCM
+      //Tick.delay_us(5);
     } 
   }
 /*
@@ -262,7 +235,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {
-//      Tick.delay_500ns(); // SSG
+      Tick.delay_500ns(); // SSG
     } else if (addr >= 0x21 && addr <= 0x9e) {
       Tick.delay_us(15); // 
     } else if (addr >= 0xa0 && addr <= 0xb6) {
@@ -279,6 +252,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
       Tick.delay_us(10); // 
     } else {
       // ADPCM
+      //Tick.delay_us(5);
     } 
   }
   
@@ -301,6 +275,9 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   }
  */
 }
+
+
+
 
 
 void FMChip::checkBRDY() {
