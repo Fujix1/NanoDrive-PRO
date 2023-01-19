@@ -15,12 +15,10 @@ extern "C" {
 #define A0 PB5
 #define A1 PA12
 #define WR PB4
-#define IC PA8
-#define RD PB9
-//#define CS0_PIN PA11
+#define IC PA11
+#define CS0 PB9
 //#define CS1_PIN PA12
 //#define CS2_PIN PB5
-
 
 #define A0_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)
 #define A0_LOW (GPIO_BC(GPIOB) = GPIO_PIN_5)
@@ -28,14 +26,12 @@ extern "C" {
 #define A1_LOW (GPIO_BC(GPIOA) = GPIO_PIN_12)
 #define WR_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_4)
 #define WR_LOW (GPIO_BC(GPIOB) = GPIO_PIN_4)
-#define IC_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_8)
-#define IC_LOW (GPIO_BC(GPIOA) = GPIO_PIN_8)
+#define IC_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_11)
+#define IC_LOW (GPIO_BC(GPIOA) = GPIO_PIN_11)
 
-#define RD_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_9)
-#define RD_LOW (GPIO_BC(GPIOB) = GPIO_PIN_9)
+#define CS0_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_9)
+#define CS0_LOW (GPIO_BC(GPIOB) = GPIO_PIN_9)
 
-//#define CS0_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_11)  // HIGH
-//#define CS0_LOW (GPIO_BC(GPIOA) = GPIO_PIN_11)    // LOW
 //#define CS1_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_12)  // HIGH
 //#define CS1_LOW (GPIO_BC(GPIOA) = GPIO_PIN_12)    // LOW
 //#define CS2_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)  // HIGH
@@ -53,24 +49,24 @@ void FMChip::begin() {
   pinMode(D7, OUTPUT);
 
   pinMode(WR, OUTPUT);
-  pinMode(RD, OUTPUT);
   pinMode(A0, OUTPUT);
   pinMode(A1, OUTPUT);
   pinMode(IC, OUTPUT);
 
-  //pinMode(CS0_PIN, OUTPUT);
+  pinMode(CS0, OUTPUT);
   //pinMode(CS1_PIN, OUTPUT);
   // pinMode(CS2_PIN, OUTPUT);
 }
 
 void FMChip::reset(void) {
-  RD_HIGH;
+  CS0_LOW;
   WR_HIGH;
   A0_LOW;
   A1_LOW;
   IC_LOW;
   Tick.delay_us(100);  // at least 12 cycles // at 1.5MHz: 0.67us
   IC_HIGH;
+  CS0_HIGH;
   Tick.delay_us(100);
   
 }
@@ -148,8 +144,6 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
     1/8MHz = 0.125 us
   */
 
-  //PinStatus BUSY = LOW;
-
   // LOW
   GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
   GPIO_BC(GPIOA) =
@@ -160,6 +154,8 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   GPIO_BOP(GPIOA) = (addr & 0b11111000) >> 3;  // D3, D4 ,D5, D6, D7
 
   A0_LOW;
+  CS0_LOW;
+
   if (a1) {
     A1_HIGH;
   } else {
@@ -173,32 +169,19 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {
-      Tick.delay_500ns(); // SSG
+      //Tick.delay_500ns(); // SSG
     } else {
-      Tick.delay_us(7); // リズム + FM 1-3
+      Tick.delay_us(8); // リズム + FM 1-3
     } 
   } else {
     if (addr >= 0x30 && addr <= 0xb6) {
-      Tick.delay_us(7); // FM 4-6
+      Tick.delay_us(8); // FM 4-6
     } else {
       // ADPCM
       //Tick.delay_us(5);
     } 
   }
-/*
-  // FMとリズムはビジーフラグチェック
-  if (addr>=0x10 && addr<=0xb6) {
-    // rdychk ビジーフラグチェック
-    gpio_init(digitalPinToPort(D7), GPIO_MODE_IN_FLOATING, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D7));
-    do {
-      RD_LOW;
-      Tick.delay_500ns();
-      BUSY = digitalRead(D7);
-      RD_HIGH;
-    } while (BUSY==HIGH);
-    gpio_init(digitalPinToPort(D7), GPIO_MODE_OUT_PP, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D7));
-  }
-*/
+
   //---------------------------------------
   // data
   
@@ -209,7 +192,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   //   D0-D7: Twds 100ns
 
   WR_LOW;
-  Tick.delay_100ns();
+  Tick.delay_500ns();
 
  // LOW
   GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
@@ -231,68 +214,36 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
              $11 - $1D  83 = 10.375 us
     ADPCM    $00 - $10   0
   */
-
+ 
   // 書き込み後の待ち時間
   if (a1 == 0) {
-    if (addr >= 0 && addr <= 0x0f) {
-      Tick.delay_500ns(); // SSG
-    } else if (addr >= 0x21 && addr <= 0x9e) {
-      Tick.delay_us(15); // 
-    } else if (addr >= 0xa0 && addr <= 0xb6) {
-      Tick.delay_us(10); // 
-    } else if (addr == 0x10) {
-      Tick.delay_us(72); // 
-    } else {
-      Tick.delay_us(11); // 
+    if (addr >= 0 && addr <= 0x0f) {  // SSG
+      //Tick.delay_500ns();
+    } else if (addr >= 0x21 && addr <= 0x9e) {  // FM 1
+      Tick.delay_us(15);
+    } else if (addr >= 0xa0 && addr <= 0xb6) {  // FM 2
+      Tick.delay_us(9);
+    } else if (addr == 0x10) {  // Rythm 1
+      Tick.delay_us(75);
+    } else { // Rythm 2
+      Tick.delay_us(15);
     }
   } else {
-    if (addr >= 0x21 && addr <= 0x9e) {
-      Tick.delay_us(15); // 
-    } else if (addr >= 0xa0 && addr <= 0xb6) {
-      Tick.delay_us(10); // 
-    } else {
-      // ADPCM
+    if (addr >= 0x21 && addr <= 0x9e) {  // FM
+      Tick.delay_us(15); 
+    } else if (addr >= 0xa0 && addr <= 0xb6) { // FM
+      Tick.delay_us(9);
+    } else {  // ADPCM
       //Tick.delay_us(5);
     } 
   }
-  
+
+  CS0_HIGH;
   A0_LOW;
-  if (a1) {
-    A1_LOW;
-  }
-/*
-  // FMとリズムはビジーフラグチェック
-  if (addr>=0x10 && addr<=0xb6) {
-    // rdychk ビジーフラグチェック
-    gpio_init(digitalPinToPort(D7), GPIO_MODE_IN_FLOATING, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D7));
-    do {
-      RD_LOW;
-      Tick.delay_250ns();
-      BUSY = digitalRead(D7);
-      RD_HIGH;
-    } while (BUSY==HIGH);
-    gpio_init(digitalPinToPort(D7), GPIO_MODE_OUT_PP, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D7));
-  }
- */
-}
-
-
-
-
-
-void FMChip::checkBRDY() {
-  // ADPCM 書き込み完了フラグチェック
-  PinStatus BRDY = LOW;
-  gpio_init(digitalPinToPort(D3), GPIO_MODE_IN_FLOATING, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D3));
-  A1_HIGH;
-  do {
-    RD_LOW;
-    Tick.delay_250ns();
-    BRDY = digitalRead(D3);
-    RD_HIGH;
-  } while (BRDY==LOW);
   A1_LOW;
-  gpio_init(digitalPinToPort(D3), GPIO_MODE_OUT_PP, VARIANT_GPIO_OSPEED, digitalPinToBitMask(D3));
+
 }
+
+
 
 FMChip FM;

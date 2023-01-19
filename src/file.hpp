@@ -27,7 +27,7 @@ boolean     closeFile();
 uint8_t     get_vgm_ui8();
 uint8_t     get_vgm_ui8_at(FSIZE_t pos);
 uint16_t    get_vgm_ui16();
-uint16_t    get_vgm_ui32();
+uint32_t    get_vgm_ui32();
 uint16_t    get_vgm_ui16_at(FSIZE_t pos);
 uint32_t    get_vgm_ui32_at(FSIZE_t pos);
 void        pause(uint32_t samples);

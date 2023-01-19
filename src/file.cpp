@@ -308,7 +308,7 @@ uint16_t get_vgm_ui16() { return get_vgm_ui8() + (get_vgm_ui8() << 8); }
 
 //----------------------------------------------------------------------
 // 32 bit 返す
-uint16_t get_vgm_ui32() { 
+uint32_t get_vgm_ui32() { 
   return get_vgm_ui8() | (get_vgm_ui8() << 8) | (get_vgm_ui8() << 16) | (get_vgm_ui8() << 24);
 }
 
@@ -722,39 +722,42 @@ void vgmProcess() {
 
               uint32_t entireRomSize = get_vgm_ui32(); // size of the entire ROM 
               uint32_t startAddr = get_vgm_ui32(); // start address of data
-/*
-              FM.set_register(0x00, 0x01, 1); // ADPCM リセット
-              FM.set_register(0x10, 0x17, 1); // FLAG 制御
-              FM.set_register(0x10, 0x80, 1); // IRQ リセット
-              FM.set_register(0x00, 0x60, 1); // 外部メモリー設定、書き込み開始
-*/ 
+
               FM.set_register(0x00, 0x01, 1); // ADPCM Reset
               Tick.delay_us(46);
-
-              // RAM Writing process from "The Scheme"
-              FM.set_register(0x00, 0x21, 1);
-              Tick.delay_us(46);
-              FM.set_register(0x00, 0x20, 1); 
-              Tick.delay_us(46);
-              FM.set_register(0x10, 0x00, 1); 
-              Tick.delay_us(46);
-              FM.set_register(0x10, 0x80, 1); // IRQ Reset
-              Tick.delay_us(46);
-              FM.set_register(0x00, 0x61, 1); 
-              Tick.delay_us(46);
-              FM.set_register(0x00, 0x68, 1); 
-              Tick.delay_us(46);
-
+            
               if (VGMinfo.DRAMIs8bits) {
+                FM.set_register(0x00, 0x01, 1); // ADPCM リセット
+                Tick.delay_us(64);
+                FM.set_register(0x10, 0x17, 1); // FLAG 制御
+                Tick.delay_us(64);
+                FM.set_register(0x10, 0x80, 1); // IRQ リセット
+                Tick.delay_us(64);
+                FM.set_register(0x00, 0x60, 1); // 外部メモリー設定、書き込み開始
+                Tick.delay_us(64);
                 FM.set_register(0x01, 0x02, 1); // RAM TYPE x 8 bits
+                Tick.delay_us(64);
               } else {
+                FM.set_register(0x00, 0x21, 1);
+                Tick.delay_us(24);
+                FM.set_register(0x00, 0x20, 1); 
+                Tick.delay_us(24);
+                FM.set_register(0x10, 0x00, 1); 
+                Tick.delay_us(24);
+                FM.set_register(0x10, 0x80, 1); // IRQ Reset
+                Tick.delay_us(24);
+                FM.set_register(0x00, 0x61, 1); 
+                Tick.delay_us(24);
+                FM.set_register(0x00, 0x68, 1); 
+                Tick.delay_us(24);
+
                 FM.set_register(0x01, 0x00, 1); // RAM TYPE x 1 bit 
               }
-              Tick.delay_us(46);
+              Tick.delay_us(24);
 
               // Limit Address L/H 
               FM.set_register(0x0c, 0xff, 1);
-              Tick.delay_us(46);
+              Tick.delay_us(24);
               FM.set_register(0x0d, 0xff, 1);
 
               // Start Address L/H
@@ -765,30 +768,27 @@ void vgmProcess() {
                 stop = 0xffff;
               } else {
                 start = startAddr >> 2;
-                //stop = start + (dataSize >>2) -1;
+                //stop = start + ((dataSize -8) >>2) -1;
                 stop = 0xffff;
               }
               FM.set_register(0x02, start & 0xff, 1);
-              Tick.delay_us(46);
+              Tick.delay_us(24);
               FM.set_register(0x03, (start >> 8) & 0xff, 1);
-              Tick.delay_us(46);
+              Tick.delay_us(24);
 
               // Stop Address L/H
               FM.set_register(0x04, stop & 0xff, 1);
-              Tick.delay_us(46);
+              Tick.delay_us(24);
               FM.set_register(0x05, (stop >> 8) & 0xff, 1);
-              Tick.delay_us(46);
+              Tick.delay_us(24);
 
               for (uint32_t i=0; i < (dataSize - 0x8); i++) {
                 FM.set_register(0x08, get_vgm_ui8(), 1); // データ書き込み
-                Tick.delay_us(46);
-                //FM.set_register(0x10, 0x1b, 1); // フラグBRDYをリセットする
-                //FM.set_register(0x10, 0x13, 1); // フラグEOS, BRDYのみイネーブルにする
-                //FM.checkBRDY();
+                Tick.delay_us(24);
               }
 
               FM.set_register(0x00, 0x00, 1); // 終了プロセス
-              Tick.delay_us(100);
+              Tick.delay_us(24);
             break;
           }
         }
