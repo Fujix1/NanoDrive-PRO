@@ -9,7 +9,7 @@
 #include "SI5351/SI5351.hpp"
 #include "keypad/keypad.hpp"
 
-#define BUFFERCAPACITY 2048  // VGMの読み込み単位（バイト）
+#define BUFFERCAPACITY 4096  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
 #define ONE_CYCLE 608u       // 速度決定（少ないほど速い）
                              // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
@@ -30,9 +30,9 @@ uint32_t filesize = 0;               // ファイルサイズ
 UINT bufferSize = 0;                 // 現在のバッファ容量
 NDFileType fileType = UNDEFINED;     // プレイ中のファイル種 
 
-uint64_t  startTime;                  // 基準時間
-boolean   fileLoaded = false;         // ファイルが読み込まれた状態か
-uint8_t   songLoop = 0;                // 現在のループ回数
+uint64_t startTime;                  // 基準時間
+boolean  fileLoaded = false;         // ファイルが読み込まれた状態か
+uint8_t  songLoop = 0;               // 現在のループ回数
 
 
 // File handlers
@@ -43,11 +43,12 @@ FRESULT fr;
 
 // VGM Status
 typedef struct {
-  uint32_t  DataOffset; // データ開始位置
-  uint32_t  LoopOffset; // ループデータの戻る場所
-  uint32_t  Delay;
-  boolean   DeviceIsYM2608 = false;
-  boolean   DRAMIs8bits = false;
+  uint32_t Version;
+  uint32_t DataOffset;
+  uint32_t LoopOffset;
+  uint32_t Delay;
+  boolean  DeviceIsYM2608 = false;
+  boolean  DRAMIs8bits = false;
 } VGMInfoStruct;
 VGMInfoStruct VGMinfo;
 
@@ -70,7 +71,6 @@ typedef struct {
   uint32_t DeviceType = 0;
   uint32_t Clock = 0;
   uint32_t Pan = 0;
-
 } S98DeviceInfoStruct;
 
 // S98 tag info
@@ -401,14 +401,13 @@ void vgmReady() {
   VGMinfo.DeviceIsYM2608 = false;
 
   // VGM Version
-  uint32_t vgm_version = get_vgm_ui32_at(8);
+  VGMinfo.Version = get_vgm_ui32_at(8);
 
   // VGM Loop offset
   VGMinfo.LoopOffset = get_vgm_ui32_at(0x1c);
 
   // VGM gd3 offset
   uint32_t vgm_gd3_offset = get_vgm_ui32_at(0x14) + 0x14;
-  // LCD_ShowNum(0,32, vgm_gd3_offset, 6,RED);
 
   // GD3
   if (vgm_gd3_offset != 0) {
@@ -453,11 +452,10 @@ void vgmReady() {
 
   // Data offset
   // v1.50未満は 0x40、v1.50以降は 0x34 からの相対位置
-  VGMinfo.DataOffset = (vgm_version >= 0x150) ? get_vgm_ui32_at(0x34) + 0x34 : 0x40;
-
+  VGMinfo.DataOffset = (VGMinfo.Version >= 0x150) ? get_vgm_ui32_at(0x34) + 0x34 : 0x40;
 
   // Clock
-  uint32_t vgm_ay8910_clock = (vgm_version >= 0x151 && VGMinfo.DataOffset >= 0x78)
+  uint32_t vgm_ay8910_clock = (VGMinfo.Version >= 0x151 && VGMinfo.DataOffset >= 0x78)
                                   ? get_vgm_ui32_at(0x74)
                                   : 0;
 
@@ -551,46 +549,57 @@ void vgmReady() {
 // VGM をパースして YM2608 の DRAM タイプを調べる
 void checkYM2608DRAMType() {
 
-  if (VGMinfo.DeviceIsYM2608 == false) return;
+  VGMinfo.DRAMIs8bits = false;
+
+  // VGM ファイルが YM2608 用か
+  if (get_vgm_ui32_at(0x48) == 0) {
+    return;
+  }
+
+  // VGM Version
+  VGMinfo.Version = get_vgm_ui32_at(8);
+
+  // Data offset
+  VGMinfo.DataOffset = (VGMinfo.Version >= 0x150) ? get_vgm_ui32_at(0x34) + 0x34 : 0x40;
 
   // 初期バッファ補充
   f_lseek(&fil, VGMinfo.DataOffset);
   fr = f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
   bufferPos = 0;
 
-  VGMinfo.DRAMIs8bits = false;
-
   uint8_t reg;
   uint8_t dat;
   while(1) {
     uint8_t command = get_vgm_ui8();
     switch (command) {
-      case 0xa0:
-      case 0x54:
-      case 0xa4:
-      case 0x55:
       case 0x56:
+        get_vgm_ui8();
+        get_vgm_ui8();
         break;
       case 0x57: // YM2608 port 1
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
         if (reg == 0x01) {
-          VGMinfo.DRAMIs8bits = (dat>>1 & 0b1);
+          VGMinfo.DRAMIs8bits = ((dat & 0b10) == 0b10);
           return;
         }
         break;
       case 0x61:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
       case 0x62:
       case 0x63:
+        break;
       case 0x66:
         return;
         break;
       case 0x67:{
-        uint8_t dummy = get_vgm_ui8();
-        uint8_t type = get_vgm_ui8(); // data type
+        get_vgm_ui8();
+        get_vgm_ui8();
         uint32_t size = get_vgm_ui32(); // size of data, in bytes
-        for (uint32_t i=0; i < size; i++) {
-          dummy = get_vgm_ui8();
+        for (uint32_t i=0; i < size ; i++) {
+          get_vgm_ui8();
         }
         break;
       }
@@ -688,9 +697,9 @@ void vgmProcess() {
       case 0x63:
         VGMinfo.Delay += 882;
         break;
+
       case 0x66:
         if (!VGMinfo.LoopOffset) {  // ループしない曲
-
           if (numFiles[currentDir] - 1 == currentFile)
             openDirectory(1);
           else
@@ -705,59 +714,34 @@ void vgmProcess() {
           f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
         }
         break;
+
       case 0x67: { // DATA BLOCK
-          uint8_t dummy = get_vgm_ui8();
-          if (dummy != 0x66)
-            break;
+          get_vgm_ui8();
           uint8_t type = get_vgm_ui8(); // data type
           uint32_t dataSize = get_vgm_ui32(); // size of data, in bytes
 
           switch (type) {
             case 0x00: 
             case 0x81: // YM2608 DELTA-T ROM data
-              //  data block format for ROM dumps:
-              //   rr rr rr rr (32 bits) = size of the entire ROM
-              //   ss ss ss ss (32 bits) = start address of data
-              //   (data) = ROM data, of size (block size - 0x08)
 
-              uint32_t entireRomSize = get_vgm_ui32(); // size of the entire ROM 
+              get_vgm_ui32(); // size of the entire ROM 
               uint32_t startAddr = get_vgm_ui32(); // start address of data
 
-              FM.set_register(0x00, 0x01, 1); // ADPCM Reset
-              Tick.delay_us(46);
-            
-              if (VGMinfo.DRAMIs8bits) {
-                FM.set_register(0x00, 0x01, 1); // ADPCM リセット
-                Tick.delay_us(64);
-                FM.set_register(0x10, 0x17, 1); // FLAG 制御
-                Tick.delay_us(64);
-                FM.set_register(0x10, 0x80, 1); // IRQ リセット
-                Tick.delay_us(64);
-                FM.set_register(0x00, 0x60, 1); // 外部メモリー設定、書き込み開始
-                Tick.delay_us(64);
-                FM.set_register(0x01, 0x02, 1); // RAM TYPE x 8 bits
-                Tick.delay_us(64);
-              } else {
-                FM.set_register(0x00, 0x21, 1);
-                Tick.delay_us(24);
-                FM.set_register(0x00, 0x20, 1); 
-                Tick.delay_us(24);
-                FM.set_register(0x10, 0x00, 1); 
-                Tick.delay_us(24);
-                FM.set_register(0x10, 0x80, 1); // IRQ Reset
-                Tick.delay_us(24);
-                FM.set_register(0x00, 0x61, 1); 
-                Tick.delay_us(24);
-                FM.set_register(0x00, 0x68, 1); 
-                Tick.delay_us(24);
+              FM.set_register(0x00, 0x01, 1); // ADPCM リセット
+              Tick.delay_us(24);
 
+              FM.set_register(0x10, 0x17, 1); // FLAG 制御
+              FM.set_register(0x10, 0x80, 1); // IRQ Reset
+              FM.set_register(0x00, 0x60, 1); // 外部メモリー設定、書き込み開始
+
+              if (VGMinfo.DRAMIs8bits) {
+                FM.set_register(0x01, 0x02, 1); // RAM TYPE x 8 bits
+              } else {
                 FM.set_register(0x01, 0x00, 1); // RAM TYPE x 1 bit 
               }
-              Tick.delay_us(24);
 
               // Limit Address L/H 
               FM.set_register(0x0c, 0xff, 1);
-              Tick.delay_us(24);
               FM.set_register(0x0d, 0xff, 1);
 
               // Start Address L/H
@@ -768,31 +752,36 @@ void vgmProcess() {
                 stop = 0xffff;
               } else {
                 start = startAddr >> 2;
-                //stop = start + ((dataSize -8) >>2) -1;
                 stop = 0xffff;
               }
               FM.set_register(0x02, start & 0xff, 1);
-              Tick.delay_us(24);
               FM.set_register(0x03, (start >> 8) & 0xff, 1);
-              Tick.delay_us(24);
 
               // Stop Address L/H
               FM.set_register(0x04, stop & 0xff, 1);
-              Tick.delay_us(24);
               FM.set_register(0x05, (stop >> 8) & 0xff, 1);
+
               Tick.delay_us(24);
+
+              uint8_t wait = 0;
+              if (VGMinfo.DRAMIs8bits) {
+                wait = 1; // 8 bit はウェイトほぼ不要
+              } else {
+                wait = 20; // 1 bit アクセスは時間がかかる 最低18usくらい
+              }
 
               for (uint32_t i=0; i < (dataSize - 0x8); i++) {
                 FM.set_register(0x08, get_vgm_ui8(), 1); // データ書き込み
-                Tick.delay_us(24);
+                Tick.delay_us(wait);
               }
 
               FM.set_register(0x00, 0x00, 1); // 終了プロセス
               Tick.delay_us(24);
-            break;
+              break;
           }
         }
         break;
+        
       case 0x70:
       case 0x71:
       case 0x72:
