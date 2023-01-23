@@ -15,9 +15,7 @@ class FMChip {
   void reset();
   void set_register(byte addr, byte value, boolean a1);
   void writeRaw(byte data, boolean a0, boolean a1 );
-
- private:
-  unsigned char psgFrqLowByte = 0;
+  void set_output(byte);
 };
 
 extern FMChip FM;

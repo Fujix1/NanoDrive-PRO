@@ -9,26 +9,26 @@
 #include "SI5351/SI5351.hpp"
 #include "keypad/keypad.hpp"
 
-#define BUFFERCAPACITY 4096  // VGMの読み込み単位（バイト）
+#define BUFFERCAPACITY 2048   // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
 #define ONE_CYCLE 608u       // 速度決定（少ないほど速い）
                              // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
 
 boolean mount_is_ok = false;
-uint8_t currentDir;                 // 今のディレクトリインデックス
-uint8_t currentFile;                // 今のファイルインデックス
-uint8_t numDirs = 0;                // ルートにあるディレクトリ数
-char **dirs;                        // ルートにあるディレクトリの配列
-uint8_t *attenuations;              // 各ディレクトリの減衰量 (デシベル)
-char ***files;                      // 各ディレクトリ内の vgm ファイル名配列
-uint8_t *numFiles;                  // 各ディレクトリ内の vgm ファイル数
+uint8_t currentDir;                  // 今のディレクトリインデックス
+uint8_t currentFile;                 // 今のファイルインデックス
+uint8_t numDirs = 0;                 // ルートにあるディレクトリ数
+char **dirs;                         // ルートにあるディレクトリの配列
+uint8_t *attenuations;               // 各ディレクトリの減衰量 (デシベル)
+char ***files;                       // 各ディレクトリ内の vgm ファイル名配列
+uint8_t *numFiles;                   // 各ディレクトリ内の vgm ファイル数
 
 boolean fileOpened = false;          // ファイル開いてるか
 uint8_t dataBuffer[BUFFERCAPACITY];  // バッファ
 uint16_t bufferPos = 0;              // バッファ内の位置
 uint32_t filesize = 0;               // ファイルサイズ
 UINT bufferSize = 0;                 // 現在のバッファ容量
-NDFileType fileType = UNDEFINED;     // プレイ中のファイル種 
+NDFileType fileType = UNDEFINED;     // プレイ中のファイル種
 
 uint64_t startTime;                  // 基準時間
 boolean  fileLoaded = false;         // ファイルが読み込まれた状態か
@@ -66,44 +66,6 @@ typedef enum {
   SN76489
 } DeviceType;
 
-// S98 device info
-typedef struct {
-  uint32_t DeviceType = 0;
-  uint32_t Clock = 0;
-  uint32_t Pan = 0;
-} S98DeviceInfoStruct;
-
-// S98 tag info
-typedef struct {
-  String title;
-  String artist;
-  String game;
-  String year;
-  String genre;
-  String comment;
-  String copyright;
-  String s98by;
-  String system;
-  boolean isUTF8 = false;
-} S98TagStruct;
-S98TagStruct s98tag;
-
-// S98 info
-typedef struct {
-  char FormatVersion;
-  uint32_t TimerInfo;
-  uint32_t TimerInfo2;
-  uint32_t Compressing;
-  uint32_t TAGAddress;
-  uint32_t DumpAddress;
-  uint32_t LoopAddress;
-  uint32_t DeviceCount;
-  S98DeviceInfoStruct *DeviceInfo;
-
-  uint32_t OneCycle;
-  uint32_t Sync;
-} S98InfoStruct;
-S98InfoStruct s98info;
 
 
 //---------------------------------------------------------------
@@ -359,6 +321,7 @@ uint32_t get_vgm_ui32_at(uint32_t pos) {
 // ファイルを開く
 boolean openFile(char *path) {
   String sPath;
+  Tick.delay_us(16);
 
   if (!mount_is_ok) return false;
 
@@ -371,9 +334,11 @@ boolean openFile(char *path) {
   sPath = sPath.substring(0, 19);
 
   Display.set1(sPath);
-  // LCD_ShowString(0, 0, (u8 *)(sPath.c_str()), RED);
+
+  Tick.delay_us(16);
 
   fr = f_open(&fil, path, FA_READ);
+  Tick.delay_us(16);
   if (fr == FR_OK) {
     fr = f_stat(
         path,
@@ -389,9 +354,10 @@ boolean openFile(char *path) {
 //----------------------------------------------------------------------
 // オープンした VGM ファイルを解析して再生準備する
 void vgmReady() {
-  uint8_t gd3buffer[512];
+
+  //LCD_ShowString(0, 0, (u8 *)("vgmReady start."), WHITE);
+
   UINT i, p;
-  char c[2];
   UINT br;
   String gd3[10];
 
@@ -402,21 +368,32 @@ void vgmReady() {
 
   // VGM Version
   VGMinfo.Version = get_vgm_ui32_at(8);
+  //LCD_ShowString(0, 0, (u8 *)("vgmReady Version."), WHITE);
 
   // VGM Loop offset
   VGMinfo.LoopOffset = get_vgm_ui32_at(0x1c);
+  //LCD_ShowString(0, 0, (u8 *)("vgmReady LoopOffset."), WHITE);
 
   // VGM gd3 offset
-  uint32_t vgm_gd3_offset = get_vgm_ui32_at(0x14) + 0x14;
+  uint32_t vgm_gd3_offset = get_vgm_ui32_at(0x14);
+
+  //LCD_ShowString(0, 0, (u8 *)("before GD3. "), WHITE);
 
   // GD3
   if (vgm_gd3_offset != 0) {
-    f_lseek(&fil, vgm_gd3_offset + 12);
-    f_read(&fil, gd3buffer, 512, &br);
+    vgm_gd3_offset += 0x14;
 
-    p = 0;
+    char c[2];
+    uint8_t *gd3buffer;
+    gd3buffer = (uint8_t*)malloc(sizeof(uint8_t) * (filesize - vgm_gd3_offset - 12));
+
+    f_lseek(&fil, vgm_gd3_offset + 12);
+    f_read(&fil, gd3buffer, filesize - vgm_gd3_offset - 8, &br);
+
     i = 0;
     c[1] = '\0';
+    //LCD_ShowString(0, 0, (u8 *)("after f_read. "), YELLOW);
+
     for (p = 0; p < br; p += 2) {
       if (gd3buffer[p] == 0 && gd3buffer[p + 1] == 0) {
         i++;
@@ -426,6 +403,10 @@ void vgmReady() {
         gd3[i].concat(c);
       }
     }
+
+    free(gd3buffer);
+
+   // LCD_ShowString(0, 0, (u8 *)("after free. "), YELLOW);
 
     /* GD3 の情報配列
       0 "Track name (in English characters)\0"
@@ -449,6 +430,7 @@ void vgmReady() {
     gd3[4].concat(gd3[8]);
     Display.set3(gd3[4]);  // システム名＋リリース日
   }
+  //LCD_ShowString(0, 0, (u8 *)("after GD3"), WHITE);
 
   // Data offset
   // v1.50未満は 0x40、v1.50以降は 0x34 からの相対位置
@@ -458,6 +440,7 @@ void vgmReady() {
   uint32_t vgm_ay8910_clock = (VGMinfo.Version >= 0x151 && VGMinfo.DataOffset >= 0x78)
                                   ? get_vgm_ui32_at(0x74)
                                   : 0;
+  //LCD_ShowString(0, 0, (u8 *)("before Clock"), WHITE);
 
   if (vgm_ay8910_clock) {
     switch (vgm_ay8910_clock) {
@@ -541,7 +524,7 @@ void vgmReady() {
       }
     }
   */
- 
+  //LCD_ShowString(0, 0, (u8 *)("after Clock"), WHITE);
   fileLoaded = true;
 }
 
@@ -625,12 +608,12 @@ void checkYM2608DRAMType() {
 }
 
 void vgmProcess() {
-  
+
   // 初期バッファ補充
   f_lseek(&fil, VGMinfo.DataOffset);
   fr = f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
   bufferPos = 0;
-
+  
   while (1) {
     if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
       if (numFiles[currentDir] - 1 == currentFile)
@@ -643,6 +626,7 @@ void vgmProcess() {
     uint8_t dat;
     startTime = get_timer_value();
     byte command = get_vgm_ui8();
+    
 
     switch (command) {
       case 0xA0:  // AY8910, YM2203 PSG, YM2149, YMZ294D
@@ -684,10 +668,11 @@ void vgmProcess() {
         break;
 
       // Wait n samples, n can range from 0 to 65535 (approx 1.49 seconds)
-      case 0x61:
-        VGMinfo.Delay += get_vgm_ui16();
+      case 0x61: {
+        uint16_t delay = get_vgm_ui16();
+        VGMinfo.Delay += delay;
         break;
-
+      }
       // wait 735 samples (60th of a second)
       case 0x62:
         VGMinfo.Delay += 735;
@@ -716,7 +701,7 @@ void vgmProcess() {
         break;
 
       case 0x67: { // DATA BLOCK
-          get_vgm_ui8();
+          get_vgm_ui8(); // dummy
           uint8_t type = get_vgm_ui8(); // data type
           uint32_t dataSize = get_vgm_ui32(); // size of data, in bytes
 
@@ -746,20 +731,17 @@ void vgmProcess() {
 
               // Start Address L/H
               uint32_t start;
-              uint32_t stop;
               if (VGMinfo.DRAMIs8bits) {
                 start = startAddr >> 5;
-                stop = 0xffff;
               } else {
                 start = startAddr >> 2;
-                stop = 0xffff;
               }
               FM.set_register(0x02, start & 0xff, 1);
               FM.set_register(0x03, (start >> 8) & 0xff, 1);
 
               // Stop Address L/H
-              FM.set_register(0x04, stop & 0xff, 1);
-              FM.set_register(0x05, (stop >> 8) & 0xff, 1);
+              FM.set_register(0x04, 0xff, 1);
+              FM.set_register(0x05, 0xff, 1);
 
               Tick.delay_us(24);
 
@@ -777,11 +759,12 @@ void vgmProcess() {
 
               FM.set_register(0x00, 0x00, 1); // 終了プロセス
               Tick.delay_us(24);
+
               break;
           }
         }
         break;
-        
+
       case 0x70:
       case 0x71:
       case 0x72:
@@ -800,12 +783,15 @@ void vgmProcess() {
       case 0x7F:
         VGMinfo.Delay += (command & 15) + 1;
         break;
+      case 0x00:
+        break;
       default:
         break;
     }
 
     if (VGMinfo.Delay > 0) {
       bool flag = false;
+
       while ((get_timer_value() - startTime) <= VGMinfo.Delay * ONE_CYCLE) {
 
         if (flag == false && VGMinfo.Delay > 3) {
@@ -836,324 +822,13 @@ void vgmProcess() {
         }
       }
       VGMinfo.Delay = 0;
+
     }
 
   }
 }
 
 
-//----------------------------------------------------------------------
-// オープンした S98 ファイルを解析して再生準備する
-void s98Ready() {
-  UINT i, p;
-
-  fileLoaded = false;
-  songLoop = 0;
-  s98info.Sync = 0;
-
-  // magic
-  if (((get_vgm_ui8_at(0x00)!=0x53) ||
-       (get_vgm_ui8_at(0x01)!=0x39) ||
-       (get_vgm_ui8_at(0x02)!=0x38))) {
-    return;
-  }
-
-  s98info.FormatVersion = (char)get_vgm_ui8_at(0x03) - '0';
-
-  switch (s98info.FormatVersion) {
-    case 0:
-    case 1:
-      s98info.TimerInfo = get_vgm_ui32_at(0x04);
-      if (s98info.TimerInfo == 0) s98info.TimerInfo =10;
-      s98info.TimerInfo2 = 1000;
-      s98info.TAGAddress = get_vgm_ui32_at(0x10);
-      s98info.DumpAddress = get_vgm_ui32_at(0x14);
-      s98info.LoopAddress = get_vgm_ui32_at(0x18);
-      s98info.DeviceCount = 0;
-      break;
-    case 2:
-      s98info.TimerInfo = get_vgm_ui32_at(0x04);
-      if (s98info.TimerInfo == 0) s98info.TimerInfo =10;
-      s98info.TimerInfo2 = get_vgm_ui32_at(0x08);
-      if (s98info.TimerInfo2 == 0) s98info.TimerInfo2 =1000;
-      s98info.TAGAddress = get_vgm_ui32_at(0x10);
-      s98info.DumpAddress = get_vgm_ui32_at(0x14);
-      s98info.LoopAddress = get_vgm_ui32_at(0x18);
-      if (get_vgm_ui32_at(0x20) == 0) s98info.DeviceCount = 0;
-      break;
-    case 3:
-      s98info.TimerInfo = get_vgm_ui32_at(0x04);
-      if (s98info.TimerInfo == 0) s98info.TimerInfo =10;
-      s98info.TimerInfo2 = get_vgm_ui32_at(0x08);
-      if (s98info.TimerInfo2 == 0) s98info.TimerInfo2 =1000;
-      s98info.TAGAddress = get_vgm_ui32_at(0x10);
-      s98info.DumpAddress = get_vgm_ui32_at(0x14);
-      s98info.LoopAddress = get_vgm_ui32_at(0x18);
-      s98info.DeviceCount = get_vgm_ui32_at(0x1c);
-      break;
-  }
-
-  // 1 sync の tick
-  // 108 MHz / 4 = 27 ns
-  s98info.OneCycle = 108000000 / 4 * s98info.TimerInfo / s98info.TimerInfo2;
-
-  if (s98info.DeviceCount == 0) {
-    s98info.DeviceInfo = (S98DeviceInfoStruct*)malloc(sizeof(S98DeviceInfoStruct) * 1);
-    s98info.DeviceInfo[0].DeviceType = YM2612;
-    s98info.DeviceInfo[0].Clock = 7987200;
-    s98info.DeviceInfo[0].Pan = 3;
-  } else {
-
-    s98info.DeviceInfo = (S98DeviceInfoStruct*)malloc(sizeof(S98DeviceInfoStruct) * s98info.DeviceCount);
-    for (i=0; i<s98info.DeviceCount; i++) {
-      s98info.DeviceInfo[i].DeviceType = get_vgm_ui32_at(0x20 + i * 0x10);
-      s98info.DeviceInfo[i].Clock = get_vgm_ui32_at(0x24 + i * 0x10);
-      s98info.DeviceInfo[i].Pan = get_vgm_ui32_at(0x28 + i * 0x10);
-    }
-  }
-  //LCD_ShowNum(24,0, s98info.DeviceInfo[0].DeviceType, 7, WHITE);
-
-  // Tag info
-  UINT br;
-  char c[2];
-  String st,stlower;
-  uint8_t shift = 0;
-
-  if (s98info.TAGAddress != 0) {
-    uint8_t gd3buffer[filesize - s98info.TAGAddress - 5];
-    //LCD_ShowNum(0,0, filesize - s98info.TAGAddress - 5, 8, WHITE);
-    f_lseek(&fil, s98info.TAGAddress + 5);
-    f_read(&fil, gd3buffer, filesize - s98info.TAGAddress - 5, &br);
-
-    // check BOM
-    if (gd3buffer[0] == 0xef && gd3buffer[1] == 0xbb && gd3buffer[2] == 0xbf) {
-      s98tag.isUTF8 = true;
-    }
-    if (s98tag.isUTF8) {
-      shift = 3;
-    } else {
-      shift = 0;
-    }
-    c[1] = '\0';
-    st = "";
-    stlower = "";
-
-    for (p=shift; p<br; p++) {
-      if (gd3buffer[p] == 0x00) break; 
-      if (gd3buffer[p] == 0x0a) {
-        stlower = st;
-        stlower.toLowerCase();
-        if ( stlower.indexOf("title=") == 0 ) {
-          s98tag.title = st.substring(6);
-        } else if ( stlower.indexOf("artist=") == 0 ) {
-          s98tag.artist = st.substring(7);
-        } else if ( stlower.indexOf("game=") == 0 ) {
-          s98tag.game = st.substring(5);
-        } else if ( stlower.indexOf("year=") == 0 ) {
-          s98tag.year = st.substring(5);
-        } else if ( stlower.indexOf("genre=") == 0 ) {
-          s98tag.genre = st.substring(6);
-        } else if ( stlower.indexOf("comment=") == 0 ) {
-          s98tag.comment = st.substring(8);
-        } else if ( stlower.indexOf("copyright=") == 0 ) {
-          s98tag.copyright = st.substring(10);
-        } else if ( stlower.indexOf("s98by=") == 0 ) {
-          s98tag.s98by = st.substring(6);
-        } else if ( stlower.indexOf("system=") == 0 ) {
-          s98tag.system = st.substring(7);
-        }
-        st = "";
-        stlower = "";
-      } else {
-        c[0] = gd3buffer[p];
-        st.concat(c);
-      }
-    }
-    
-    st = s98tag.title;
-    st.concat(" / ");
-    st.concat(s98tag.game);
-    Display.set2(st);
-
-    st = s98tag.artist;
-    st.concat(" / ");
-    st.concat(s98tag.system);
-    Display.set3(st);
-  }
-
-  // Set Clocks
-  if (s98info.DeviceInfo[0].DeviceType == AY38910 || s98info.DeviceInfo[0].DeviceType == YM2149) {
-    switch (s98info.DeviceInfo[0].Clock) {
-      case 1250000:  // 1.25MHz
-        SI5351.setFreq(SI5351_5000, 0);
-        break;
-      case 1500000:  // 1.5 MHz
-        SI5351.setFreq(SI5351_6000, 0);
-        break;
-      case 1789772:
-      case 1789773:
-        SI5351.setFreq(SI5351_7159, 0);
-        break;
-      case 2000000:
-        SI5351.setFreq(SI5351_8000, 0);
-        break;
-      default:
-        SI5351.setFreq(SI5351_8000, 0);
-        break;
-    }
-  } else if (s98info.DeviceInfo[0].DeviceType == YM2203) {
-    switch (s98info.DeviceInfo[0].Clock) {
-      case 3000000:  // 3MHz
-        SI5351.setFreq(SI5351_6000);
-        break;
-      case 3072000:  // 3.072MHz
-        SI5351.setFreq(SI5351_6144);
-        break;
-      case 3579580:  // 3.579MHz
-      case 3579545:
-        SI5351.setFreq(SI5351_7159);
-        break;
-      case 3993600:
-        SI5351.setFreq(SI5351_7987);
-        break;
-      case 4000000:
-        SI5351.setFreq(SI5351_8000);
-        break;
-      case 4500000:
-        SI5351.setFreq(SI5351_9000);
-        break;
-      default:
-        SI5351.setFreq(SI5351_7987);
-        break;
-    }
-  } else if (s98info.DeviceInfo[0].DeviceType == YM2608) {
-    switch (s98info.DeviceInfo[0].Clock) {
-      case 7987000:  // 7.987000 MHz
-      case 7987200:  // 7.987200 MHz
-        SI5351.setFreq(SI5351_7987);
-        break;
-      case 8000000:  // 8MHz
-        SI5351.setFreq(SI5351_8000);
-        break;
-      default:
-        SI5351.setFreq(SI5351_7987);
-        break;
-    }
-  }
-
-  // 初期バッファ補充
-  f_lseek(&fil, s98info.DumpAddress);
-  fr = f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
-  bufferPos = 0;
-  fileLoaded = true;
-  return;
-
-}
-
-void s98Process() {
-  
-  boolean timeUpdateFlag = false; // 連続命令はスタート時刻を更新しないフラグ
-  startTime = get_timer_value();
-
-  while (fileLoaded) {
-    if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
-      if (numFiles[currentDir] - 1 == currentFile)
-        openDirectory(1);
-      else
-        filePlay(1);
-    }
-
-    uint8_t addr;
-    uint8_t data;
-
-    if (timeUpdateFlag) {
-      startTime = get_timer_value();
-      timeUpdateFlag = false;
-    }
-
-    byte command = get_vgm_ui8();
-    switch (command) {
-      case 0x00:
-        addr = get_vgm_ui8();
-        data = get_vgm_ui8();
-        FM.set_register(addr, data, 0);
-        break;
-      case 0x01:
-        addr = get_vgm_ui8();
-        data = get_vgm_ui8();
-        FM.set_register(addr, data, 1);
-        break;
-      case 0xFF: // 1 sync wait
-        s98info.Sync += 1;
-        break;
-      case 0xFE:{ // n sync wait
-        data = get_vgm_ui8();
-        int s = 0, n = 0, i = 0;
-        do {
-          ++i;
-          n |= (data & 0x7f) << s;
-          s += 7;
-        } while (data & 0x80);
-        n += 2;
-        s98info.Sync += n;
-        break;
-      }
-      case 0xFD: 
-        timeUpdateFlag = true;
-        if (s98info.LoopAddress == 0) {  // ループしない曲
-          if (numFiles[currentDir] - 1 == currentFile)
-            openDirectory(1);
-          else
-            filePlay(1);
-        } else {
-          songLoop++;
-          if (songLoop == MAXLOOP) {  // 既定ループ数ならフェードアウトON
-            PT2257.start_fadeout();
-          }
-          f_lseek(&fil, s98info.LoopAddress);  // ループする曲
-          bufferPos = 0;  // ループ開始位置からバッファを読む
-          f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
-        }
-      break;
-    }
-
-    if (s98info.Sync > 0) {
-      bool flag = false;
-      while ((get_timer_value() - startTime) <= s98info.Sync * s98info.OneCycle) {
-
-        if (flag == false && s98info.Sync > 0) {
-          flag = true;
-          // handle key input
-          switch (Keypad.checkButton()) {
-            case Keypad.btnSELECT:  // ◯－－－－
-              openDirectory(1);
-              break;
-            case Keypad.btnLEFT:  // －◯－－－
-              openDirectory(-1);
-              break;
-            case Keypad.btnDOWN:  // －－◯－－
-              filePlay(+1);
-              break;
-            case Keypad.btnUP:  // －－－◯－
-              filePlay(-1);
-              break;
-            case Keypad.btnRIGHT:  // －－－－◯
-              PT2257.start_fadeout();
-              break;
-          }
-          // LCD の長い曲名をスクロールする
-          // タイミングずれるので無効
-          //if (Display.update()) { // LCDの文字表示更新
-          //  
-          //}
-        }
-      }
-      timeUpdateFlag = true;
-      s98info.Sync = 0;
-    }
-    
-  }
-}
 
 //----------------------------------------------------------------------
 // ディレクトリ番号＋ファイル番号でファイルを開く
@@ -1162,10 +837,11 @@ void fileOpen(int d, int f) {
 
   PT2257.mute();
   fileLoaded = false;
+  closeFile();
 
   sprintf(st, "%s/%s", dirs[d], files[d][f]);
   if (openFile(st)) {
-    
+
     // 拡張子チェック
     String filename = files[d][f];
     filename.toLowerCase();
@@ -1176,25 +852,23 @@ void fileOpen(int d, int f) {
     } else if (ext =="s98") {
       fileType = S98;
     }
+    //LCD_ShowString(0, 0, (u8 *)("After suf check."), WHITE);
 
     switch (fileType) {
-    case UNDEFINED:
-      break;
-    case VGM:
-      vgmReady();
-      checkYM2608DRAMType();
-      FM.reset();
-      Tick.delay_ms(16);
-      PT2257.reset(attenuations[d]);
-      vgmProcess();
-      break;
-    case S98:
-      s98Ready();
-      FM.reset();
-      Tick.delay_ms(16);
-      PT2257.reset(attenuations[d]);
-      s98Process();
-      break;
+      case UNDEFINED:
+        break;
+      case VGM:
+        vgmReady();
+        //LCD_ShowString(0, 0, (u8 *)("before DRAM type"), WHITE);
+        checkYM2608DRAMType();
+        //LCD_ShowString(0, 0, (u8 *)("before fm.reset"), WHITE);
+        FM.reset();
+        Tick.delay_ms(16);
+        //LCD_ShowString(0, 0, (u8 *)("before PT2257.reset"), WHITE);
+        PT2257.reset(attenuations[d]);
+        //LCD_ShowString(0, 0, (u8 *)("before vgmprocess"), WHITE);
+        vgmProcess();
+        break;
     }
 
   }

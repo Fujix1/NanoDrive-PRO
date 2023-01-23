@@ -2,6 +2,7 @@
 extern "C" {
 #include "lcd/lcd.h"
 }
+
 // Output Pins
 #define D0 PC15
 #define D1 PC14
@@ -12,30 +13,29 @@ extern "C" {
 #define D6 PA3
 #define D7 PA4
 
-#define A0 PB5
-#define A1 PA12
-#define WR PB4
-#define IC PA11
-#define CS0 PB9
-//#define CS1_PIN PA12
-//#define CS2_PIN PB5
+#define A1 PB5
+#define A0 PB4
+#define WR PA12
+#define IC PA8
 
-#define A0_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)
-#define A0_LOW (GPIO_BC(GPIOB) = GPIO_PIN_5)
-#define A1_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_12)
-#define A1_LOW (GPIO_BC(GPIOA) = GPIO_PIN_12)
-#define WR_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_4)
-#define WR_LOW (GPIO_BC(GPIOB) = GPIO_PIN_4)
-#define IC_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_11)
-#define IC_LOW (GPIO_BC(GPIOA) = GPIO_PIN_11)
+#define CS0 PA11
+#define CS1 PB9
 
-#define CS0_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_9)
-#define CS0_LOW (GPIO_BC(GPIOB) = GPIO_PIN_9)
 
-//#define CS1_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_12)  // HIGH
-//#define CS1_LOW (GPIO_BC(GPIOA) = GPIO_PIN_12)    // LOW
-//#define CS2_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)  // HIGH
-//#define CS2_LOW  (GPIO_BC(GPIOB)  = GPIO_PIN_5)  // LOW
+#define A0_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_4)
+#define A0_LOW (GPIO_BC(GPIOB) = GPIO_PIN_4)
+#define A1_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)
+#define A1_LOW (GPIO_BC(GPIOB) = GPIO_PIN_5)
+#define WR_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_12)
+#define WR_LOW (GPIO_BC(GPIOA) = GPIO_PIN_12)
+#define IC_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_8)
+#define IC_LOW (GPIO_BC(GPIOA) = GPIO_PIN_8)
+
+#define CS0_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_11)
+#define CS0_LOW (GPIO_BC(GPIOA) = GPIO_PIN_11)
+#define CS1_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_9)
+#define CS1_LOW (GPIO_BC(GPIOB) = GPIO_PIN_9)
+
 
 void FMChip::begin() {
 
@@ -54,8 +54,8 @@ void FMChip::begin() {
   pinMode(IC, OUTPUT);
 
   pinMode(CS0, OUTPUT);
-  //pinMode(CS1_PIN, OUTPUT);
-  // pinMode(CS2_PIN, OUTPUT);
+  pinMode(CS1, OUTPUT);
+
 }
 
 void FMChip::reset(void) {
@@ -68,7 +68,6 @@ void FMChip::reset(void) {
   IC_HIGH;
   CS0_HIGH;
   Tick.delay_us(100);
-  
 }
 
 void FMChip::writeRaw(byte data, boolean a0=0, boolean a1=0 ) {
@@ -114,6 +113,17 @@ void FMChip::writeRaw(byte data, boolean a0=0, boolean a1=0 ) {
 
 }
 
+void FMChip::set_output(byte data) {
+  // LOW
+  GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  GPIO_BC(GPIOA) =
+      GPIO_PIN_4 | GPIO_PIN_3 | GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0;
+  // HIGH
+  GPIO_BOP(GPIOC) =
+      ((data & 0b1) << 15) | ((data & 0b10) << 13) | ((data & 0b100) << 11);
+  GPIO_BOP(GPIOA) = (data & 0b11111000) >> 3;  // D3, D4 ,D5, D6, D7
+}
+
 void FMChip::set_register(byte addr, byte data, boolean a1=0) {
 
   /* リズムオフ
@@ -144,14 +154,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
     1/8MHz = 0.125 us
   */
 
-  // LOW
-  GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  GPIO_BC(GPIOA) =
-      GPIO_PIN_4 | GPIO_PIN_3 | GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0;
-  // HIGH
-  GPIO_BOP(GPIOC) =
-      ((addr & 0b1) << 15) | ((addr & 0b10) << 13) | ((addr & 0b100) << 11);
-  GPIO_BOP(GPIOA) = (addr & 0b11111000) >> 3;  // D3, D4 ,D5, D6, D7
+  set_output(addr);
 
   A0_LOW;
   CS0_LOW;
@@ -194,14 +197,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   WR_LOW;
   Tick.delay_500ns();
 
- // LOW
-  GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  GPIO_BC(GPIOA) =
-      GPIO_PIN_4 | GPIO_PIN_3 | GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0;
-  // HIGH
-  GPIO_BOP(GPIOC) =
-      ((data & 0b1) << 15) | ((data & 0b10) << 13) | ((data & 0b100) << 11);
-  GPIO_BOP(GPIOA) = (data & 0b11111000) >> 3;
+  set_output(data);
 
   Tick.delay_500ns(); //  Tww 最小 200ns
   WR_HIGH;
