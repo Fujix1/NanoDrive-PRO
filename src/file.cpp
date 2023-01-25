@@ -191,10 +191,9 @@ boolean sd_init() {
       fr = f_findfirst(&dir, &fno, dirs[i], "*.*");
       n = 0;
       while (fr == FR_OK && fno.fname[0]) {
-        String filename = fno.fname;
-        filename.toLowerCase();
-        String ext = filename.substring(filename.lastIndexOf(".") + 1);
-        if (ext == "vgm" || ext == "s98") {
+        // 拡張子チェック
+        const char *ext = strrchr(fno.fname, '.');
+        if (strcmp(".VGM", ext) == 0 || strcmp(".S98", ext) == 0) {
           n++;
         }
         f_findnext(&dir, &fno);
@@ -249,14 +248,13 @@ boolean sd_init() {
         fr = f_findfirst(&dir, &fno, dirs[i], "*.*");
         n = 0;
         while (fr == FR_OK && fno.fname[0]) {
-          String filename = fno.fname;
-          filename.toLowerCase();
-          String ext = filename.substring(filename.lastIndexOf(".") + 1);
-          if (ext == "vgm" || ext == "s98") {
+          // 拡張子チェック
+          const char *ext = strrchr(fno.fname, '.');
+          if (strcmp(".VGM", ext) == 0 || strcmp(".S98", ext) == 0) {
             strcpy(files[i][n], fno.fname);
             n++;
-            f_findnext(&dir, &fno);
           }
+          f_findnext(&dir, &fno);
         }
       }
     }
@@ -391,10 +389,7 @@ boolean openFile(char *path) {
 //----------------------------------------------------------------------
 // オープンした VGM ファイルを解析して再生準備する
 void vgmReady() {
-  // LCD_ShowString(0, 0, (u8 *)("vgmReady start."), WHITE);
 
-  UINT i, p;
-  UINT br;
   String gd3[10];
 
   fileLoaded = false;
@@ -404,19 +399,18 @@ void vgmReady() {
 
   // VGM Version
   VGMinfo.Version = get_vgm_ui32_at(8);
-  // LCD_ShowString(0, 0, (u8 *)("vgmReady Version."), WHITE);
 
   // VGM Loop offset
   VGMinfo.LoopOffset = get_vgm_ui32_at(0x1c);
-  // LCD_ShowString(0, 0, (u8 *)("vgmReady LoopOffset."), WHITE);
 
   // VGM gd3 offset
   uint32_t vgm_gd3_offset = get_vgm_ui32_at(0x14);
 
-  // LCD_ShowString(0, 0, (u8 *)("before GD3. "), WHITE);
-
   // GD3
   if (vgm_gd3_offset != 0) {
+    UINT i, p;
+    UINT br;
+    
     vgm_gd3_offset += 0x14;
 
     char c[2];
@@ -429,8 +423,6 @@ void vgmReady() {
 
     i = 0;
     c[1] = '\0';
-    // LCD_ShowString(0, 0, (u8 *)("after f_read. "), YELLOW);
-
     for (p = 0; p < br; p += 2) {
       if (gd3buffer[p] == 0 && gd3buffer[p + 1] == 0) {
         i++;
@@ -441,11 +433,7 @@ void vgmReady() {
       }
     }
 
-    free(gd3buffer);
-
-    // LCD_ShowString(0, 0, (u8 *)("after free. "), YELLOW);
-
-    /* GD3 の情報配列
+     /* GD3 の情報配列
       0 "Track name (in English characters)\0"
       1 "Track name (in Japanese characters)\0"
       2 "Game name (in English characters)\0"
@@ -459,7 +447,6 @@ void vgmReady() {
       9 "Name of person who converted it to a VGM file.\0"
       10 "Notes\0"
     */
-
     gd3[0].concat(" / ");
     gd3[0].concat(gd3[2]);
     Display.set2(gd3[0]);  // 曲名表示＋ゲーム名
@@ -468,7 +455,7 @@ void vgmReady() {
     gd3[4].concat(gd3[8]);
     Display.set3(gd3[4]);  // システム名＋リリース日
   }
-  // LCD_ShowString(0, 0, (u8 *)("after GD3"), WHITE);
+
 
   // Data offset
   // v1.50未満は 0x40、v1.50以降は 0x34 からの相対位置
@@ -480,7 +467,6 @@ void vgmReady() {
       (VGMinfo.Version >= 0x151 && VGMinfo.DataOffset >= 0x78)
           ? get_vgm_ui32_at(0x74)
           : 0;
-  // LCD_ShowString(0, 0, (u8 *)("before Clock"), WHITE);
 
   if (vgm_ay8910_clock) {
     switch (vgm_ay8910_clock) {
@@ -647,6 +633,7 @@ void checkYM2608DRAMType() {
 }
 
 void vgmProcess() {
+
   // 初期バッファ補充
   f_lseek(&fil, VGMinfo.DataOffset);
   fr = f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
@@ -654,10 +641,12 @@ void vgmProcess() {
 
   while (1) {
     if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
-      if (numFiles[currentDir] - 1 == currentFile)
-        openDirectory(1);
-      else
-        filePlay(1);
+      if (numFiles[currentDir] - 1 == currentFile) {
+        Keypad.LastButton = btnSELECT;
+      } else {
+        Keypad.LastButton = btnDOWN;
+      }
+      return;
     }
 
     uint8_t reg;
@@ -722,10 +711,12 @@ void vgmProcess() {
 
       case 0x66:
         if (!VGMinfo.LoopOffset) {  // ループしない曲
-          if (numFiles[currentDir] - 1 == currentFile)
-            openDirectory(1);
-          else
-            filePlay(1);
+          if (numFiles[currentDir] - 1 == currentFile) {
+            Keypad.LastButton = btnSELECT;
+          } else {
+            Keypad.LastButton = btnDOWN;
+          }
+          return;
         } else {
           songLoop++;
           if (songLoop == MAXLOOP) {  // 既定ループ数ならフェードアウトON
@@ -780,8 +771,6 @@ void vgmProcess() {
             FM.set_register(0x04, 0xff, 1);
             FM.set_register(0x05, 0xff, 1);
 
-            Tick.delay_us(24);
-
             uint8_t wait = 0;
             if (VGMinfo.DRAMIs8bits) {
               wait = 1;  // 8 bit はウェイトほぼ不要
@@ -795,8 +784,6 @@ void vgmProcess() {
             }
 
             FM.set_register(0x00, 0x00, 1);  // 終了プロセス
-            Tick.delay_us(24);
-
             break;
         }
       } break;
@@ -831,23 +818,8 @@ void vgmProcess() {
       while ((get_timer_value() - startTime) <= VGMinfo.Delay * ONE_CYCLE) {
         if (flag == false && VGMinfo.Delay > 3) {
           flag = true;
-          // handle key input
-          switch (Keypad.checkButton()) {
-            case Keypad.btnSELECT:  // ◯－－－－
-              openDirectory(1);
-              break;
-            case Keypad.btnLEFT:  // －◯－－－
-              openDirectory(-1);
-              break;
-            case Keypad.btnDOWN:  // －－◯－－
-              filePlay(+1);
-              break;
-            case Keypad.btnUP:  // －－－◯－
-              filePlay(-1);
-              break;
-            case Keypad.btnRIGHT:  // －－－－◯
-              PT2257.start_fadeout();
-              break;
+          if (Keypad.checkButton() != btnNONE) {
+            return;
           }
           // LCD の長い曲名をスクロールする
           // タイミングずれるので無効
@@ -933,7 +905,6 @@ void s98Ready() {
       s98info.DeviceInfo[i].Pan = get_vgm_ui32_at(0x28 + i * 0x10);
     }
   }
-  //LCD_ShowNum(24,0, s98info.DeviceInfo[0].DeviceType, 7, WHITE);
 
   // Tag info
   UINT br;
@@ -943,7 +914,6 @@ void s98Ready() {
 
   if (s98info.TAGAddress != 0) {
     uint8_t gd3buffer[filesize - s98info.TAGAddress - 5];
-    //LCD_ShowNum(0,0, filesize - s98info.TAGAddress - 5, 8, WHITE);
     f_lseek(&fil, s98info.TAGAddress + 5);
     f_read(&fil, gd3buffer, filesize - s98info.TAGAddress - 5, &br);
 
@@ -1079,10 +1049,12 @@ void s98Process() {
 
   while (fileLoaded) {
     if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
-      if (numFiles[currentDir] - 1 == currentFile)
-        openDirectory(1);
-      else
-        filePlay(1);
+        if (numFiles[currentDir] - 1 == currentFile) {
+          Keypad.LastButton = btnSELECT;
+        } else {
+          Keypad.LastButton = btnDOWN;
+        }
+        return;
     }
 
     uint8_t addr;
@@ -1123,10 +1095,12 @@ void s98Process() {
       case 0xFD: 
         timeUpdateFlag = true;
         if (s98info.LoopAddress == 0) {  // ループしない曲
-          if (numFiles[currentDir] - 1 == currentFile)
-            openDirectory(1);
-          else
-            filePlay(1);
+          if (numFiles[currentDir] - 1 == currentFile) {
+            Keypad.LastButton = btnSELECT;
+          } else {
+            Keypad.LastButton = btnDOWN;
+          }
+          return;
         } else {
           songLoop++;
           if (songLoop == MAXLOOP) {  // 既定ループ数ならフェードアウトON
@@ -1140,34 +1114,11 @@ void s98Process() {
     }
 
     if (s98info.Sync > 0) {
-      bool flag = false;
       while ((get_timer_value() - startTime) <= s98info.Sync * s98info.OneCycle) {
-
-        if (flag == false && s98info.Sync > 0) {
-          flag = true;
-          // handle key input
-          switch (Keypad.checkButton()) {
-            case Keypad.btnSELECT:  // ◯－－－－
-              openDirectory(1);
-              break;
-            case Keypad.btnLEFT:  // －◯－－－
-              openDirectory(-1);
-              break;
-            case Keypad.btnDOWN:  // －－◯－－
-              filePlay(+1);
-              break;
-            case Keypad.btnUP:  // －－－◯－
-              filePlay(-1);
-              break;
-            case Keypad.btnRIGHT:  // －－－－◯
-              PT2257.start_fadeout();
-              break;
+        if (s98info.Sync > 0) {
+          if (Keypad.checkButton() != btnNONE) {
+            return;
           }
-          // LCD の長い曲名をスクロールする
-          // タイミングずれるので無効
-          //if (Display.update()) { // LCDの文字表示更新
-          //  
-          //}
         }
       }
       timeUpdateFlag = true;
@@ -1179,29 +1130,29 @@ void s98Process() {
 //----------------------------------------------------------------------
 // ディレクトリ番号＋ファイル番号でファイルを開く
 void fileOpen(int d, int f) {
-  char st[64];
+
+  char st[21];
 
   PT2257.mute();
   fileLoaded = false;
   closeFile();
 
-  sprintf(st, "%s/%s", dirs[d], files[d][f]);
+  strcpy(st, dirs[d]);
+  strcat(st, "/");
+  strcat(st, files[d][f]);
+
   if (openFile(st)) {
+
     // 拡張子チェック
-    String filename = files[d][f];
-    filename.toLowerCase();
-    String ext = filename.substring(filename.lastIndexOf(".") + 1);
-
-    if (ext == "vgm") {
+    const char *ext = strrchr(files[d][f], '.');
+    if (strcmp(".VGM", ext) == 0) {
       fileType = VGM;
-    } else if (ext == "s98") {
+    } else if (strcmp(".S98", ext) == 0) {
       fileType = S98;
+    } else {
+      fileType = UNDEFINED;
     }
-    // LCD_ShowString(0, 0, (u8 *)("After suf check."), WHITE);
-
     switch (fileType) {
-      case UNDEFINED:
-        break;
       case VGM:
         vgmReady();
         checkYM2608DRAMType();
@@ -1216,6 +1167,8 @@ void fileOpen(int d, int f) {
         Tick.delay_ms(16);
         PT2257.reset(attenuations[d]);
         s98Process();
+        break;
+      default:
         break;
     }
   }

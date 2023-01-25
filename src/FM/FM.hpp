@@ -5,9 +5,6 @@
 
 #include "tick.hpp"
 
-#define CS0 0
-#define CS1 1
-#define CS2 2
 
 class FMChip {
  public:

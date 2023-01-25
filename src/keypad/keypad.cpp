@@ -24,7 +24,7 @@ uint16_t KeypadClass::get_adc(int ch) {
 
 //----------------------------------------------------------------------
 // ボタンの状態取得
-byte KeypadClass::readButton() {
+Button KeypadClass::readButton() {
   /*
   ボタン 押して無いとき 4095
   ボタン1 2985 - 2995
@@ -48,8 +48,8 @@ byte KeypadClass::readButton() {
   return btnNONE;
 }
 
-byte KeypadClass::checkButton() {
-  byte anaInput;
+Button KeypadClass::checkButton() {
+  Button anaInput;
   uint32_t ms = Tick.millis2();
   if (ms > buttonLastTick + BUTTON_INTERVAL) {  // 最後に押したときから
                                                 // BUTTON_INTERVAL 経過してるとき
@@ -57,16 +57,19 @@ byte KeypadClass::checkButton() {
     if (lastAnalogInput != anaInput) {         // 前回のボタンと違えば
       lastAnalogInput = anaInput;
       if (anaInput != btnNONE) {
+        LastButton = anaInput;
         buttonRepeatStarted = ms;
         return anaInput;
       }
     } else if (anaInput != 0 && lastAnalogInput == anaInput &&
                ms - buttonRepeatStarted > REPEAT_DELAY) {
       // 同じキーの場合はリピートディレイを過ぎているとき
+      LastButton = anaInput;
       return anaInput;
     }
     buttonLastTick = ms;
   }
+  LastButton = btnNONE;
   return btnNONE;
 }
 

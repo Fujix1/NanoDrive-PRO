@@ -37,19 +37,23 @@ extern "C" {
 #include "tick.hpp"
 
 #define BUTTON_INTERVAL 64   // ボタン取得間隔 ms
-#define REPEAT_DELAY 500     // ボタンリピート開始まで ms
+#define REPEAT_DELAY 400     // ボタンリピート開始まで ms
+
+typedef enum { 
+  btnNONE, btnRIGHT, btnUP, btnDOWN, btnLEFT, btnSELECT 
+} Button;
 
 class KeypadClass {
+ public:
+  KeypadClass();
+  Button checkButton();
+  Button LastButton = btnNONE;
  private:
   uint32_t buttonLastTick = 0;         // 最後にボタンが押された時間
   uint32_t buttonRepeatStarted = 0;    // リピート開始時間
-  byte lastAnalogInput = btnNONE;
-  byte readButton();
+  Button lastAnalogInput = btnNONE;
+  Button readButton();
   uint16_t get_adc(int ch);
- public:
-  enum Button { btnNONE, btnRIGHT, btnUP, btnDOWN, btnLEFT, btnSELECT };
-  KeypadClass();
-  byte checkButton();
 };
 
 extern KeypadClass Keypad;

@@ -14,6 +14,7 @@ extern "C" {
 #include "SI5351/SI5351.hpp"
 #include "file.hpp"
 #include "tick.hpp"
+#include "keypad/keypad.hpp"
 
 void setup() {
   Lcd_Init();        // LCD 初期化
@@ -42,9 +43,30 @@ void setup() {
   Tick.delay_ms(200);  // SDカード安定用
   sd_init();           // ファイル初期化
 
-  filePlay(0);  // 再生開始
+  filePlay(0);
 }
 
 void loop() {
-  // ぼくはまちちゃん！
+  
+  switch (Keypad.LastButton) {
+    case btnSELECT:  // ◯－－－－
+      Keypad.LastButton = btnNONE;
+      openDirectory(1);
+      break;
+    case btnLEFT:  // －◯－－－
+      Keypad.LastButton = btnNONE;
+      openDirectory(-1);
+      break;
+    case btnDOWN:  // －－◯－－
+      Keypad.LastButton = btnNONE;
+      filePlay(1);
+      break;
+    case btnUP:  // －－－◯－
+      Keypad.LastButton = btnNONE;
+      filePlay(-1);
+      break;
+    case btnNONE:
+      break;
+  } 
+
 }
