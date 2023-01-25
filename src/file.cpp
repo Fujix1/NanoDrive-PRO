@@ -66,6 +66,44 @@ typedef enum {
   SN76489
 } DeviceType;
 
+// S98 device info
+typedef struct {
+  uint32_t DeviceType = 0;
+  uint32_t Clock = 0;
+  uint32_t Pan = 0;
+} S98DeviceInfoStruct;
+
+// S98 tag info
+typedef struct {
+  String title;
+  String artist;
+  String game;
+  String year;
+  String genre;
+  String comment;
+  String copyright;
+  String s98by;
+  String system;
+  boolean isUTF8 = false;
+} S98TagStruct;
+S98TagStruct s98tag;
+
+// S98 info
+typedef struct {
+  char FormatVersion;
+  uint32_t TimerInfo;
+  uint32_t TimerInfo2;
+  uint32_t Compressing;
+  uint32_t TAGAddress;
+  uint32_t DumpAddress;
+  uint32_t LoopAddress;
+  uint32_t DeviceCount;
+  S98DeviceInfoStruct *DeviceInfo;
+
+  uint32_t OneCycle;
+  uint32_t Sync;
+} S98InfoStruct;
+S98InfoStruct s98info;
 
 
 //---------------------------------------------------------------
@@ -830,6 +868,319 @@ void vgmProcess() {
 
 
 
+
+//----------------------------------------------------------------------
+// オープンした S98 ファイルを解析して再生準備する
+void s98Ready() {
+  UINT i, p;
+
+  fileLoaded = false;
+  songLoop = 0;
+  s98info.Sync = 0;
+
+  // magic
+  if (((get_vgm_ui8_at(0x00)!=0x53) ||
+       (get_vgm_ui8_at(0x01)!=0x39) ||
+       (get_vgm_ui8_at(0x02)!=0x38))) {
+    return;
+  }
+
+  s98info.FormatVersion = (char)get_vgm_ui8_at(0x03) - '0';
+
+  switch (s98info.FormatVersion) {
+    case 0:
+    case 1:
+      s98info.TimerInfo = get_vgm_ui32_at(0x04);
+      if (s98info.TimerInfo == 0) s98info.TimerInfo =10;
+      s98info.TimerInfo2 = 1000;
+      s98info.TAGAddress = get_vgm_ui32_at(0x10);
+      s98info.DumpAddress = get_vgm_ui32_at(0x14);
+      s98info.LoopAddress = get_vgm_ui32_at(0x18);
+      s98info.DeviceCount = 0;
+      break;
+    case 2:
+      s98info.TimerInfo = get_vgm_ui32_at(0x04);
+      if (s98info.TimerInfo == 0) s98info.TimerInfo =10;
+      s98info.TimerInfo2 = get_vgm_ui32_at(0x08);
+      if (s98info.TimerInfo2 == 0) s98info.TimerInfo2 =1000;
+      s98info.TAGAddress = get_vgm_ui32_at(0x10);
+      s98info.DumpAddress = get_vgm_ui32_at(0x14);
+      s98info.LoopAddress = get_vgm_ui32_at(0x18);
+      if (get_vgm_ui32_at(0x20) == 0) s98info.DeviceCount = 0;
+      break;
+    case 3:
+      s98info.TimerInfo = get_vgm_ui32_at(0x04);
+      if (s98info.TimerInfo == 0) s98info.TimerInfo =10;
+      s98info.TimerInfo2 = get_vgm_ui32_at(0x08);
+      if (s98info.TimerInfo2 == 0) s98info.TimerInfo2 =1000;
+      s98info.TAGAddress = get_vgm_ui32_at(0x10);
+      s98info.DumpAddress = get_vgm_ui32_at(0x14);
+      s98info.LoopAddress = get_vgm_ui32_at(0x18);
+      s98info.DeviceCount = get_vgm_ui32_at(0x1c);
+      break;
+  }
+
+  // 1 sync の tick
+  // 108 MHz / 4 = 27 ns
+  s98info.OneCycle = 108000000 / 4 * s98info.TimerInfo / s98info.TimerInfo2;
+
+  if (s98info.DeviceCount == 0) {
+    s98info.DeviceInfo = (S98DeviceInfoStruct*)malloc(sizeof(S98DeviceInfoStruct) * 1);
+    s98info.DeviceInfo[0].DeviceType = YM2612;
+    s98info.DeviceInfo[0].Clock = 7987200;
+    s98info.DeviceInfo[0].Pan = 3;
+  } else {
+
+    s98info.DeviceInfo = (S98DeviceInfoStruct*)malloc(sizeof(S98DeviceInfoStruct) * s98info.DeviceCount);
+    for (i=0; i<s98info.DeviceCount; i++) {
+      s98info.DeviceInfo[i].DeviceType = get_vgm_ui32_at(0x20 + i * 0x10);
+      s98info.DeviceInfo[i].Clock = get_vgm_ui32_at(0x24 + i * 0x10);
+      s98info.DeviceInfo[i].Pan = get_vgm_ui32_at(0x28 + i * 0x10);
+    }
+  }
+  //LCD_ShowNum(24,0, s98info.DeviceInfo[0].DeviceType, 7, WHITE);
+
+  // Tag info
+  UINT br;
+  char c[2];
+  String st,stlower;
+  uint8_t shift = 0;
+
+  if (s98info.TAGAddress != 0) {
+    uint8_t gd3buffer[filesize - s98info.TAGAddress - 5];
+    //LCD_ShowNum(0,0, filesize - s98info.TAGAddress - 5, 8, WHITE);
+    f_lseek(&fil, s98info.TAGAddress + 5);
+    f_read(&fil, gd3buffer, filesize - s98info.TAGAddress - 5, &br);
+
+    // check BOM
+    if (gd3buffer[0] == 0xef && gd3buffer[1] == 0xbb && gd3buffer[2] == 0xbf) {
+      s98tag.isUTF8 = true;
+    }
+    if (s98tag.isUTF8) {
+      shift = 3;
+    } else {
+      shift = 0;
+    }
+    c[1] = '\0';
+    st = "";
+    stlower = "";
+
+    for (p=shift; p<br; p++) {
+      if (gd3buffer[p] == 0x00) break; 
+      if (gd3buffer[p] == 0x0a) {
+        stlower = st;
+        stlower.toLowerCase();
+        if ( stlower.indexOf("title=") == 0 ) {
+          s98tag.title = st.substring(6);
+        } else if ( stlower.indexOf("artist=") == 0 ) {
+          s98tag.artist = st.substring(7);
+        } else if ( stlower.indexOf("game=") == 0 ) {
+          s98tag.game = st.substring(5);
+        } else if ( stlower.indexOf("year=") == 0 ) {
+          s98tag.year = st.substring(5);
+        } else if ( stlower.indexOf("genre=") == 0 ) {
+          s98tag.genre = st.substring(6);
+        } else if ( stlower.indexOf("comment=") == 0 ) {
+          s98tag.comment = st.substring(8);
+        } else if ( stlower.indexOf("copyright=") == 0 ) {
+          s98tag.copyright = st.substring(10);
+        } else if ( stlower.indexOf("s98by=") == 0 ) {
+          s98tag.s98by = st.substring(6);
+        } else if ( stlower.indexOf("system=") == 0 ) {
+          s98tag.system = st.substring(7);
+        }
+        st = "";
+        stlower = "";
+      } else {
+        c[0] = gd3buffer[p];
+        st.concat(c);
+      }
+    }
+    
+    st = s98tag.title;
+    st.concat(" / ");
+    st.concat(s98tag.game);
+    Display.set2(st);
+
+    st = s98tag.artist;
+    st.concat(" / ");
+    st.concat(s98tag.system);
+    Display.set3(st);
+  }
+
+  // Set Clocks
+  if (s98info.DeviceInfo[0].DeviceType == AY38910 || s98info.DeviceInfo[0].DeviceType == YM2149) {
+    switch (s98info.DeviceInfo[0].Clock) {
+      case 1250000:  // 1.25MHz
+        SI5351.setFreq(SI5351_5000, 0);
+        break;
+      case 1500000:  // 1.5 MHz
+        SI5351.setFreq(SI5351_6000, 0);
+        break;
+      case 1789772:
+      case 1789773:
+        SI5351.setFreq(SI5351_7159, 0);
+        break;
+      case 2000000:
+        SI5351.setFreq(SI5351_8000, 0);
+        break;
+      default:
+        SI5351.setFreq(SI5351_8000, 0);
+        break;
+    }
+  } else if (s98info.DeviceInfo[0].DeviceType == YM2203) {
+    switch (s98info.DeviceInfo[0].Clock) {
+      case 3000000:  // 3MHz
+        SI5351.setFreq(SI5351_6000);
+        break;
+      case 3072000:  // 3.072MHz
+        SI5351.setFreq(SI5351_6144);
+        break;
+      case 3579580:  // 3.579MHz
+      case 3579545:
+        SI5351.setFreq(SI5351_7159);
+        break;
+      case 3993600:
+        SI5351.setFreq(SI5351_7987);
+        break;
+      case 4000000:
+        SI5351.setFreq(SI5351_8000);
+        break;
+      case 4500000:
+        SI5351.setFreq(SI5351_9000);
+        break;
+      default:
+        SI5351.setFreq(SI5351_7987);
+        break;
+    }
+  } else if (s98info.DeviceInfo[0].DeviceType == YM2608) {
+    switch (s98info.DeviceInfo[0].Clock) {
+      case 7987000:  // 7.987000 MHz
+      case 7987200:  // 7.987200 MHz
+        SI5351.setFreq(SI5351_7987);
+        break;
+      case 8000000:  // 8MHz
+        SI5351.setFreq(SI5351_8000);
+        break;
+      default:
+        SI5351.setFreq(SI5351_7987);
+        break;
+    }
+  }
+
+  // 初期バッファ補充
+  f_lseek(&fil, s98info.DumpAddress);
+  fr = f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
+  bufferPos = 0;
+  fileLoaded = true;
+  return;
+
+}
+
+void s98Process() {
+  
+  boolean timeUpdateFlag = false; // 連続命令はスタート時刻を更新しないフラグ
+  startTime = get_timer_value();
+
+  while (fileLoaded) {
+    if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
+      if (numFiles[currentDir] - 1 == currentFile)
+        openDirectory(1);
+      else
+        filePlay(1);
+    }
+
+    uint8_t addr;
+    uint8_t data;
+
+    if (timeUpdateFlag) {
+      startTime = get_timer_value();
+      timeUpdateFlag = false;
+    }
+
+    byte command = get_vgm_ui8();
+    switch (command) {
+      case 0x00:
+        addr = get_vgm_ui8();
+        data = get_vgm_ui8();
+        FM.set_register(addr, data, 0);
+        break;
+      case 0x01:
+        addr = get_vgm_ui8();
+        data = get_vgm_ui8();
+        FM.set_register(addr, data, 1);
+        break;
+      case 0xFF: // 1 sync wait
+        s98info.Sync += 1;
+        break;
+      case 0xFE:{ // n sync wait
+        data = get_vgm_ui8();
+        int s = 0, n = 0, i = 0;
+        do {
+          ++i;
+          n |= (data & 0x7f) << s;
+          s += 7;
+        } while (data & 0x80);
+        n += 2;
+        s98info.Sync += n;
+        break;
+      }
+      case 0xFD: 
+        timeUpdateFlag = true;
+        if (s98info.LoopAddress == 0) {  // ループしない曲
+          if (numFiles[currentDir] - 1 == currentFile)
+            openDirectory(1);
+          else
+            filePlay(1);
+        } else {
+          songLoop++;
+          if (songLoop == MAXLOOP) {  // 既定ループ数ならフェードアウトON
+            PT2257.start_fadeout();
+          }
+          f_lseek(&fil, s98info.LoopAddress);  // ループする曲
+          bufferPos = 0;  // ループ開始位置からバッファを読む
+          f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
+        }
+      break;
+    }
+
+    if (s98info.Sync > 0) {
+      bool flag = false;
+      while ((get_timer_value() - startTime) <= s98info.Sync * s98info.OneCycle) {
+
+        if (flag == false && s98info.Sync > 0) {
+          flag = true;
+          // handle key input
+          switch (Keypad.checkButton()) {
+            case Keypad.btnSELECT:  // ◯－－－－
+              openDirectory(1);
+              break;
+            case Keypad.btnLEFT:  // －◯－－－
+              openDirectory(-1);
+              break;
+            case Keypad.btnDOWN:  // －－◯－－
+              filePlay(+1);
+              break;
+            case Keypad.btnUP:  // －－－◯－
+              filePlay(-1);
+              break;
+            case Keypad.btnRIGHT:  // －－－－◯
+              PT2257.start_fadeout();
+              break;
+          }
+          // LCD の長い曲名をスクロールする
+          // タイミングずれるので無効
+          //if (Display.update()) { // LCDの文字表示更新
+          //  
+          //}
+        }
+      }
+      timeUpdateFlag = true;
+      s98info.Sync = 0;
+    }
+    
+  }
+}
 //----------------------------------------------------------------------
 // ディレクトリ番号＋ファイル番号でファイルを開く
 void fileOpen(int d, int f) {
@@ -859,15 +1210,18 @@ void fileOpen(int d, int f) {
         break;
       case VGM:
         vgmReady();
-        //LCD_ShowString(0, 0, (u8 *)("before DRAM type"), WHITE);
         checkYM2608DRAMType();
-        //LCD_ShowString(0, 0, (u8 *)("before fm.reset"), WHITE);
         FM.reset();
         Tick.delay_ms(16);
-        //LCD_ShowString(0, 0, (u8 *)("before PT2257.reset"), WHITE);
         PT2257.reset(attenuations[d]);
-        //LCD_ShowString(0, 0, (u8 *)("before vgmprocess"), WHITE);
         vgmProcess();
+        break;
+      case S98:
+        s98Ready();
+        FM.reset();
+        Tick.delay_ms(16);
+        PT2257.reset(attenuations[d]);
+        s98Process();
         break;
     }
 
