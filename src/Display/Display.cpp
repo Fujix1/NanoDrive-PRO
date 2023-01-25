@@ -17,10 +17,12 @@ extern "C" {
 #define DISPLAY_SET2DIGITS 38
 
 #define DISPLAY_SET3COLOR GREEN  // 3行目の色
-#define DISPLAY_SET3DIGITS 38
+#define DISPLAY_SET3DIGITS 19
+
+#define DISPLAY_SET4COLOR GREEN  // 4行目の色
+#define DISPLAY_SET4DIGITS 19
 
 Displaycls::Displaycls() { 
-
 }
 
 // 1行目の初期化
@@ -59,6 +61,15 @@ void Displaycls::set3(String text) {
   text = dispText3.substring(0, DISPLAY_SET3DIGITS);
   LCD_ShowString(0, 48, (u8 *)(text.c_str()), DISPLAY_SET3COLOR);
 }
+
+// 4行目の初期化
+void Displaycls::set4(String text) {
+  dispText4 = text;
+  dispText4.concat("                                      ");
+  text = dispText4.substring(0, DISPLAY_SET4DIGITS);
+  LCD_ShowString(0, 64, (u8 *)(text.c_str()), DISPLAY_SET4COLOR);
+}
+
 
 boolean Displaycls::update() {
   boolean updated = false;

@@ -8,9 +8,9 @@
 class Displaycls {
  private:
   unsigned long startTime1, startTime2, startTime3;
-  String dispText1, dispText2, dispText3;
+  String dispText1, dispText2, dispText3, dispText4;
   bool scroll1, scroll2, scroll3;
-  unsigned int pos1, pos2, pos3;
+  unsigned int pos1, pos2, pos3, pos4;
   unsigned int len1, len2, len3;
 
  public:
@@ -21,6 +21,7 @@ class Displaycls {
   void set1(String text);
   void set2(String text);
   void set3(String text);
+  void set4(String text);
   
 };
 

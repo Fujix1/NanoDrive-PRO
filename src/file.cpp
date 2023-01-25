@@ -9,20 +9,19 @@
 #include "SI5351/SI5351.hpp"
 #include "keypad/keypad.hpp"
 
-#define BUFFERCAPACITY 1024  // VGMの読み込み単位（バイト）
+#define BUFFERCAPACITY 4096  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
-#define ONE_CYCLE \
-  608u  // 速度決定（少ないほど速い）
-        // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
+#define ONE_CYCLE 608u       // 速度決定（少ないほど速い）
+                             // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
 
 boolean mount_is_ok = false;
-uint8_t currentDir;     // 今のディレクトリインデックス
-uint8_t currentFile;    // 今のファイルインデックス
-uint8_t numDirs = 0;    // ルートにあるディレクトリ数
-char **dirs;            // ルートにあるディレクトリの配列
-uint8_t *attenuations;  // 各ディレクトリの減衰量 (デシベル)
-char ***files;          // 各ディレクトリ内の vgm ファイル名配列
-uint8_t *numFiles;      // 各ディレクトリ内の vgm ファイル数
+uint8_t currentDir;                 // 今のディレクトリインデックス
+uint8_t currentFile;                // 今のファイルインデックス
+uint8_t numDirs = 0;                // ルートにあるディレクトリ数
+char **dirs;                        // ルートにあるディレクトリの配列
+uint8_t *attenuations;              // 各ディレクトリの減衰量 (デシベル)
+char ***files;                      // 各ディレクトリ内の vgm ファイル名配列
+uint8_t *numFiles;                  // 各ディレクトリ内の vgm ファイル数
 
 boolean fileOpened = false;          // ファイル開いてるか
 uint8_t dataBuffer[BUFFERCAPACITY];  // バッファ
@@ -31,9 +30,9 @@ uint32_t filesize = 0;               // ファイルサイズ
 UINT bufferSize = 0;                 // 現在のバッファ容量
 NDFileType fileType = UNDEFINED;     // プレイ中のファイル種
 
-uint64_t startTime;          // 基準時間
-boolean fileLoaded = false;  // ファイルが読み込まれた状態か
-uint8_t songLoop = 0;        // 現在のループ回数
+uint64_t startTime;                 // 基準時間
+boolean fileLoaded = false;         // ファイルが読み込まれた状態か
+uint8_t songLoop = 0;               // 現在のループ回数
 
 // File handlers
 FATFS fs;
@@ -452,9 +451,8 @@ void vgmReady() {
     gd3[0].concat(gd3[2]);
     Display.set2(gd3[0]);  // 曲名表示＋ゲーム名
 
-    gd3[4].concat(" / ");
-    gd3[4].concat(gd3[8]);
-    Display.set3(gd3[4]);  // システム名＋リリース日
+    Display.set3(gd3[6]);  // システム名
+    Display.set4(gd3[4]);
   }
 
   // Data offset
@@ -740,8 +738,6 @@ void vgmProcess() {
             uint32_t startAddr = get_vgm_ui32();  // start address of data
 
             FM.set_register(0x00, 0x01, 1);  // ADPCM リセット
-            Tick.delay_us(24);
-
             FM.set_register(0x10, 0x17, 1);  // FLAG 制御
             FM.set_register(0x10, 0x80, 1);  // IRQ Reset
             FM.set_register(0x00, 0x60, 1);  // 外部メモリー設定、書き込み開始
@@ -752,7 +748,7 @@ void vgmProcess() {
               FM.set_register(0x01, 0x00, 1);  // RAM TYPE x 1 bit
             }
 
-            // Limit Address L/H
+            // Limit Address L/H (Always 0xffff)
             FM.set_register(0x0c, 0xff, 1);
             FM.set_register(0x0d, 0xff, 1);
 
@@ -766,7 +762,7 @@ void vgmProcess() {
             FM.set_register(0x02, start & 0xff, 1);
             FM.set_register(0x03, (start >> 8) & 0xff, 1);
 
-            // Stop Address L/H
+            // Stop Address L/H (Always 0xffff)
             FM.set_register(0x04, 0xff, 1);
             FM.set_register(0x05, 0xff, 1);
 
