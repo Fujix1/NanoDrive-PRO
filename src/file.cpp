@@ -601,10 +601,10 @@ void checkYM2608DRAMType() {
         return;
         break;
       case 0x67: {
-        get_vgm_ui8();
-        get_vgm_ui8();
-        uint32_t size = get_vgm_ui32();  // size of data, in bytes
-        for (uint32_t i = 0; i < size; i++) {
+        get_vgm_ui8();                       // dummy
+        uint8_t type = get_vgm_ui8();        // data type
+        uint32_t dataSize = get_vgm_ui32();  // size of data, in bytes
+        for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
           get_vgm_ui8();
         }
         break;
@@ -626,6 +626,47 @@ void checkYM2608DRAMType() {
       case 0x7E:
       case 0x7F:
         break;
+      case 0x90: // DAC Stream
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0x91:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0x92:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0x93:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0x94:
+        get_vgm_ui8();
+        break;
+      case 0x95:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+
     }
   }
 }
@@ -731,7 +772,12 @@ void vgmProcess() {
         uint32_t dataSize = get_vgm_ui32();  // size of data, in bytes
 
         switch (type) {
-          case 0x00:
+          case 0x00: { // RAW PCM は飛ばす
+            for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
+              get_vgm_ui8();
+            }
+            break;
+          }  
           case 0x81:  // YM2608 DELTA-T ROM data
 
             get_vgm_ui32();                       // size of the entire ROM
@@ -800,6 +846,46 @@ void vgmProcess() {
       case 0x7E:
       case 0x7F:
         VGMinfo.Delay += (command & 15) + 1;
+        break;
+      case 0x90: // DAC Stream
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0x91:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0x92:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0x93:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0x94:
+        get_vgm_ui8();
+        break;
+      case 0x95:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
         break;
       case 0x00:
         break;
