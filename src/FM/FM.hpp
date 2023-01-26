@@ -2,9 +2,7 @@
 #define FM_H
 
 #include <Arduino.h>
-
 #include "tick.hpp"
-
 
 class FMChip {
  public:

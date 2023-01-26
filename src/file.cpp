@@ -9,7 +9,7 @@
 #include "SI5351/SI5351.hpp"
 #include "keypad/keypad.hpp"
 
-#define BUFFERCAPACITY 4096  // VGMの読み込み単位（バイト）
+#define BUFFERCAPACITY 5120  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
 #define ONE_CYCLE 608u       // 速度決定（少ないほど速い）
                              // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
@@ -491,24 +491,24 @@ void vgmReady() {
   if (vgm_ym2203_clock) {
     switch (vgm_ym2203_clock) {
       case 3000000:  // 3MHz
-        SI5351.setFreq(SI5351_6000);
+        SI5351.setFreq(SI5351_6000, 0);
         break;
       case 3072000:  // 3.072MHz
-        SI5351.setFreq(SI5351_6144);
+        SI5351.setFreq(SI5351_6144, 0);
         break;
       case 3579580:  // 3.579MHz
       case 3579545:
-        SI5351.setFreq(SI5351_7159);
+        SI5351.setFreq(SI5351_7159, 0);
         break;
       case 3993600:
       case 4000000:
-        SI5351.setFreq(SI5351_8000);
+        SI5351.setFreq(SI5351_8000, 0);
         break;
       case 4500000:  // 4.5MHz
-        SI5351.setFreq(SI5351_9000);
+        SI5351.setFreq(SI5351_9000, 0);
         break;
       default:
-        SI5351.setFreq(SI5351_8000);
+        SI5351.setFreq(SI5351_8000, 0);
         break;
     }
   }
@@ -518,37 +518,40 @@ void vgmReady() {
     VGMinfo.DeviceIsYM2608 = true;
     switch (vgm_ym2608_clock) {
       case 7987000:  // 7.987MHz
-        SI5351.setFreq(SI5351_7987);
+        SI5351.setFreq(SI5351_7987, 0);
         break;
       case 8000000:  // 8MHz
-        SI5351.setFreq(SI5351_8000);
+        SI5351.setFreq(SI5351_8000, 0);
         break;
       default:
-        SI5351.setFreq(SI5351_8000);
+        SI5351.setFreq(SI5351_8000, 0);
         break;
     }
   }
-  /*
-    uint32_t vgm_ym2151_clock = get_vgm_ui32_at(0x30);
-    if (vgm_ym2151_clock) {
-      switch (vgm_ym2151_clock) {
-        case 3579580:
-        case 3579545:
-          SI5351.setFreq(SI5351_3579);
-          break;
-        case 4000000:
-          SI5351.setFreq(SI5351_4000);
-          break;
-        case 3375000:
-          SI5351.setFreq(SI5351_3375);
-          break;
-        default:
-          SI5351.setFreq(SI5351_3579);
-          break;
-      }
+
+  uint32_t vgm_ym2151_clock = get_vgm_ui32_at(0x30);
+  if (vgm_ym2151_clock) {
+    switch (vgm_ym2151_clock) {
+      case 3375000:
+        SI5351.setFreq(SI5351_3375, 1);
+        break;
+      case 3500000:
+        SI5351.setFreq(SI5351_3500, 1);
+        break;
+      case 3579580:
+      case 3579545:
+      case 3580000:
+        SI5351.setFreq(SI5351_3579, 1);
+        break;
+      case 4000000:
+        SI5351.setFreq(SI5351_4000, 1);
+        break;
+      default:
+        SI5351.setFreq(SI5351_3579, 1);
+        break;
     }
-  */
-  // LCD_ShowString(0, 0, (u8 *)("after Clock"), WHITE);
+  }
+
   fileLoaded = true;
 }
 
@@ -601,8 +604,8 @@ void checkYM2608DRAMType() {
         return;
         break;
       case 0x67: {
-        get_vgm_ui8();                       // dummy
-        uint8_t type = get_vgm_ui8();        // data type
+        get_vgm_ui8();     // dummy
+        get_vgm_ui8();     // data type
         uint32_t dataSize = get_vgm_ui32();  // size of data, in bytes
         for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
           get_vgm_ui8();
@@ -666,7 +669,6 @@ void checkYM2608DRAMType() {
         get_vgm_ui8();
         get_vgm_ui8();
         break;
-
     }
   }
 }
@@ -826,8 +828,8 @@ void vgmProcess() {
 
             FM.set_register(0x00, 0x00, 1);  // 終了プロセス
             break;
-        }
-      } break;
+          }
+        } break;
 
       case 0x70:
       case 0x71:

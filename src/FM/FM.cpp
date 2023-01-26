@@ -22,6 +22,7 @@ extern "C" {
 #define CS1 PB9
 
 
+
 #define A0_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_4)
 #define A0_LOW (GPIO_BC(GPIOB) = GPIO_PIN_4)
 #define A1_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)
@@ -172,7 +173,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {
-      //Tick.delay_500ns(); // SSG
+      Tick.delay_500ns(); // SSG
     } else {
       Tick.delay_us(8); // リズム + FM 1-3
     } 
@@ -214,7 +215,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {  // SSG
-      //Tick.delay_500ns();
+      Tick.delay_500ns();
     } else if (addr >= 0x21 && addr <= 0x9e) {  // FM 1
       Tick.delay_us(15);
     } else if (addr >= 0xa0 && addr <= 0xb6) {  // FM 2
