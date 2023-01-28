@@ -61,6 +61,7 @@ void FMChip::begin() {
 
 void FMChip::reset(void) {
   CS0_LOW;
+  CS1_LOW;
   WR_HIGH;
   A0_LOW;
   A1_LOW;
@@ -68,50 +69,8 @@ void FMChip::reset(void) {
   Tick.delay_us(100);  // at least 12 cycles // at 1.5MHz: 0.67us
   IC_HIGH;
   CS0_HIGH;
+  CS1_HIGH;
   Tick.delay_us(100);
-}
-
-void FMChip::writeRaw(byte data, boolean a0=0, boolean a1=0 ) {
-  uint32_t data_bits = 0;
-
-  if (a0) {
-    A0_HIGH;
-  } else {
-    A0_LOW;
-  }
-
-  if (a1) {
-    A1_HIGH;
-  } else {
-    A1_LOW;
-  }
-
-  WR_HIGH;
-
-  //---------------------------------------
-  // data
-  if (data & 0b00000001) {
-    data_bits += GPIO_PIN_15;
-  }
-  if (data & 0b00000010) {
-    data_bits += GPIO_PIN_14;
-  }
-  if (data & 0b00000100) {
-    data_bits += GPIO_PIN_13;
-  }
-  // LOW
-  GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  GPIO_BC(GPIOA) =
-      GPIO_PIN_4 | GPIO_PIN_3 | GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0;
-
-  // HIGH
-  GPIO_BOP(GPIOC) = data_bits;
-  GPIO_BOP(GPIOA) = (data & 0b11111000) >> 3;
-
-  WR_LOW;
-  Tick.delay_us(2);
-  WR_HIGH;
-
 }
 
 void FMChip::set_output(byte data) {
@@ -241,6 +200,36 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
 
 }
 
+void FMChip::set_register_opm(byte addr, byte data) {
 
+  set_output(addr);
+
+  A0_LOW;
+  CS1_LOW;
+
+  WR_LOW;
+  Tick.delay_500ns();
+  Tick.delay_500ns();
+  WR_HIGH;
+
+  Tick.delay_us(4);
+ 
+  A0_HIGH;
+  Tick.delay_500ns();
+
+  WR_LOW;
+  Tick.delay_500ns();
+
+  set_output(data);
+
+  Tick.delay_500ns();
+  WR_HIGH;
+
+  Tick.delay_us(18); 
+
+  CS1_HIGH;
+  A0_LOW;
+
+}
 
 FMChip FM;

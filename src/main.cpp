@@ -33,7 +33,8 @@ void setup() {
 
   LCD_ShowString(0, 0, (u8 *)("Initializing SI5351.     "), WHITE);
   SI5351.begin();  // SI5351 起動
-  SI5351.setFreq(SI5351_3579);
+  SI5351.setFreq(SI5351_8000, 0);
+  SI5351.setFreq(SI5351_3579, 1);
   SI5351.enableOutputs(true);
 
   LCD_ShowString(0, 0, (u8 *)("Starting FM.             "), WHITE);

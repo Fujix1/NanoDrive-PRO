@@ -140,7 +140,7 @@ typedef enum {
 
 class SI5351_cls {
  private:
-  si5351Freq_t currentFreq;
+  si5351Freq_t currentFreq0, currentFreq1;
 
  private:
   void write8(uint8_t reg, uint8_t value);

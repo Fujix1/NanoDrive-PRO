@@ -604,11 +604,22 @@ void checkYM2608DRAMType() {
         return;
         break;
       case 0x67: {
-        get_vgm_ui8();     // dummy
-        get_vgm_ui8();     // data type
+        get_vgm_ui8();                       // dummy
+        uint8_t type = get_vgm_ui8();        // data type
         uint32_t dataSize = get_vgm_ui32();  // size of data, in bytes
-        for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
-          get_vgm_ui8();
+
+        switch (type) {
+          case 0:
+            for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
+              get_vgm_ui8();
+            }
+            break;
+          case 0x81:  // YM2608 DELTA-T ROM data
+            get_vgm_ui32();  // size of the entire ROM
+            get_vgm_ui32();  // start address of data
+            for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
+              get_vgm_ui8();
+            }
         }
         break;
       }
@@ -674,10 +685,14 @@ void checkYM2608DRAMType() {
 }
 
 void vgmProcess() {
+
   // 初期バッファ補充
   f_lseek(&fil, VGMinfo.DataOffset);
   fr = f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
   bufferPos = 0;
+
+  boolean unmuted = false; //
+  boolean unmutenow = false; 
 
   while (1) {
     if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
@@ -699,6 +714,7 @@ void vgmProcess() {
         dat = get_vgm_ui8();
         reg = get_vgm_ui8();
         FM.set_register(dat, reg, 0);
+        unmutenow = true;
         break;
       case 0x30:  // SN76489 CHIP 2
         // FM.write(get_vgm_ui8(), CS2);
@@ -707,25 +723,28 @@ void vgmProcess() {
         // FM.write(get_vgm_ui8(), CS0);
         break;
       case 0x54:  // YM2151
-      case 0xa4:
-        // reg = get_vgm_ui8();
-        // dat = get_vgm_ui8();
-        // FM.set_register(reg, dat, CS0);
+        reg = get_vgm_ui8();
+        dat = get_vgm_ui8();
+        FM.set_register_opm(reg, dat);
+        unmutenow = true;
         break;
       case 0x55:  // YM2203_0
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
         FM.set_register(reg, dat, 0);
+        unmutenow = true;
         break;
       case 0x56:  // YM2608 port 0
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
         FM.set_register(reg, dat, 0);
+        unmutenow = true;
         break;
       case 0x57:  // YM2608 port 1
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
         FM.set_register(reg, dat, 1);
+        unmutenow = true;
         break;
       case 0x5A:  // YM3812
         // reg = get_vgm_ui8();
@@ -893,6 +912,11 @@ void vgmProcess() {
         break;
       default:
         break;
+    }
+
+    if (unmuted == false && unmutenow) {
+      PT2257.reset(attenuations[currentDir]); 
+      unmuted = true;
     }
 
     if (VGMinfo.Delay > 0) {
@@ -1235,7 +1259,7 @@ void fileOpen(int d, int f) {
         checkYM2608DRAMType();
         FM.reset();
         Tick.delay_ms(16);
-        PT2257.reset(attenuations[d]);
+        //PT2257.reset(attenuations[d]);
         vgmProcess();
         break;
       case S98:

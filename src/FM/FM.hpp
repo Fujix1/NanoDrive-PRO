@@ -9,7 +9,7 @@ class FMChip {
   void begin();
   void reset();
   void set_register(byte addr, byte value, boolean a1);
-  void writeRaw(byte data, boolean a0, boolean a1 );
+  void set_register_opm(byte addr, byte value);
   void set_output(byte);
 };
 

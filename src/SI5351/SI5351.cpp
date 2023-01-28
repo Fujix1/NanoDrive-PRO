@@ -252,7 +252,15 @@ void SI5351_cls::enableOutputs(bool enabled) {
 // new frequency
 void SI5351_cls::setFreq(si5351Freq_t newFreq, uint8_t output) {
 
-  if (this->currentFreq == newFreq ) return;
+  switch (output) {
+    case 0:
+      if (this->currentFreq0 == newFreq ) return;
+    break;
+    case 1:
+      if (this->currentFreq1 == newFreq ) return;
+    break;
+  }
+
 
   si5351PLL_t targetPLL;
   
@@ -344,7 +352,7 @@ void SI5351_cls::setFreq(si5351Freq_t newFreq, uint8_t output) {
       break;
     case SI5351_7987:
       setupPLL(SI5351_PLL_A, 28, 357, 3125);
-      setupMultisynth(0, SI5351_PLL_A, 88, 0, 1);
+      setupMultisynth(output, SI5351_PLL_A, 88, 0, 1);
       break;
     case SI5351_8000:
       // 8 MHz
@@ -362,12 +370,20 @@ void SI5351_cls::setFreq(si5351Freq_t newFreq, uint8_t output) {
       setupMultisynth(output, targetPLL, 200, 0, 1);
       break;
   }
-  this->currentFreq = newFreq;
+  switch (output) {
+    case 0:
+      this->currentFreq0 = newFreq;
+    break;
+    case 1:
+      this->currentFreq1 = newFreq;
+    break;
+  }
 }
 
 // constructor
 SI5351_cls::SI5351_cls(void){
-  this->currentFreq = SI5351_UNDEFINED;
+  this->currentFreq0 = SI5351_UNDEFINED;
+  this->currentFreq1 = SI5351_UNDEFINED;
 }
 
 SI5351_cls SI5351;
