@@ -9,7 +9,7 @@
 #include "SI5351/SI5351.hpp"
 #include "keypad/keypad.hpp"
 
-#define BUFFERCAPACITY 5120  // VGMの読み込み単位（バイト）
+#define BUFFERCAPACITY 2048  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
 #define ONE_CYCLE 608u       // 速度決定（少ないほど速い）
                              // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
@@ -468,14 +468,18 @@ void vgmReady() {
 
   if (vgm_ay8910_clock) {
     switch (vgm_ay8910_clock) {
-      case 1250000:  // 1.25MHz
+      case 1250000:
         SI5351.setFreq(SI5351_5000, 0);
         break;
-      case 1500000:  // 1.5 MHz
+      case 1500000:
         SI5351.setFreq(SI5351_6000, 0);
+        break;
+      case 1536000:
+        SI5351.setFreq(SI5351_6144, 0);
         break;
       case 1789772:
       case 1789773:
+      case 1789775:
         SI5351.setFreq(SI5351_7159, 0);
         break;
       case 2000000:
@@ -501,6 +505,8 @@ void vgmReady() {
         SI5351.setFreq(SI5351_7159, 0);
         break;
       case 3993600:
+        SI5351.setFreq(SI5351_7987, 0);
+        break;
       case 4000000:
         SI5351.setFreq(SI5351_8000, 0);
         break;
@@ -959,7 +965,7 @@ void s98Ready() {
 
   switch (s98info.FormatVersion) {
     case 0:
-    case 1:
+    case 1:;
       s98info.TimerInfo = get_vgm_ui32_at(0x04);
       if (s98info.TimerInfo == 0) s98info.TimerInfo = 10;
       s98info.TimerInfo2 = 1000;
@@ -993,7 +999,9 @@ void s98Ready() {
   // 1 sync の tick
   // 108 MHz / 4 = 27 ns
   s98info.OneCycle = 108000000 / 4 * s98info.TimerInfo / s98info.TimerInfo2;
-
+  
+  free(s98info.DeviceInfo);
+  
   if (s98info.DeviceCount == 0) {
     s98info.DeviceInfo =
         (S98DeviceInfoStruct *)malloc(sizeof(S98DeviceInfoStruct) * 1);
@@ -1011,71 +1019,88 @@ void s98Ready() {
   }
 
   // Tag info
-  UINT br;
-  char c[2];
-  String st, stlower;
-  uint8_t shift = 0;
+  if (s98info.FormatVersion == 1 || s98info.FormatVersion == 2) { // old s98
+    s98tag.title = "s98 version 1 and 2 file";
+    s98tag.artist = "";
+    s98tag.game = "";
+    s98tag.year = "";
+    s98tag.genre = "";
+    s98tag.comment = "";
+    s98tag.copyright = "";
+    s98tag.s98by = "";
+    s98tag.system = "";
+    Display.set2(s98tag.title);
+    Display.set3("");
+    Display.set4("");
+  } else if (s98info.FormatVersion == 3) { // s98 v3
+    UINT br;
+    char c[2];
+    String st, stlower;
+    uint8_t shift = 0;
 
-  if (s98info.TAGAddress != 0) {
-    uint8_t gd3buffer[filesize - s98info.TAGAddress - 5];
-    f_lseek(&fil, s98info.TAGAddress + 5);
-    f_read(&fil, gd3buffer, filesize - s98info.TAGAddress - 5, &br);
+    if (s98info.TAGAddress != 0) {
+      uint8_t gd3buffer[filesize - s98info.TAGAddress - 5];
+      f_lseek(&fil, s98info.TAGAddress + 5);
+      f_read(&fil, gd3buffer, filesize - s98info.TAGAddress - 5, &br);
 
-    // check BOM
-    if (gd3buffer[0] == 0xef && gd3buffer[1] == 0xbb && gd3buffer[2] == 0xbf) {
-      s98tag.isUTF8 = true;
-    }
-    if (s98tag.isUTF8) {
-      shift = 3;
-    } else {
-      shift = 0;
-    }
-    c[1] = '\0';
-    st = "";
-    stlower = "";
-
-    for (p = shift; p < br; p++) {
-      if (gd3buffer[p] == 0x00) break;
-      if (gd3buffer[p] == 0x0a) {
-        stlower = st;
-        stlower.toLowerCase();
-        if (stlower.indexOf("title=") == 0) {
-          s98tag.title = st.substring(6);
-        } else if (stlower.indexOf("artist=") == 0) {
-          s98tag.artist = st.substring(7);
-        } else if (stlower.indexOf("game=") == 0) {
-          s98tag.game = st.substring(5);
-        } else if (stlower.indexOf("year=") == 0) {
-          s98tag.year = st.substring(5);
-        } else if (stlower.indexOf("genre=") == 0) {
-          s98tag.genre = st.substring(6);
-        } else if (stlower.indexOf("comment=") == 0) {
-          s98tag.comment = st.substring(8);
-        } else if (stlower.indexOf("copyright=") == 0) {
-          s98tag.copyright = st.substring(10);
-        } else if (stlower.indexOf("s98by=") == 0) {
-          s98tag.s98by = st.substring(6);
-        } else if (stlower.indexOf("system=") == 0) {
-          s98tag.system = st.substring(7);
-        }
-        st = "";
-        stlower = "";
-      } else {
-        c[0] = gd3buffer[p];
-        st.concat(c);
+      // check BOM
+      if (gd3buffer[0] == 0xef && gd3buffer[1] == 0xbb && gd3buffer[2] == 0xbf) {
+        s98tag.isUTF8 = true;
       }
+      if (s98tag.isUTF8) {
+        shift = 3;
+      } else {
+        shift = 0;
+      }
+      c[1] = '\0';
+      st = "";
+      stlower = "";
+
+      for (p = shift; p < br; p++) {
+        if (gd3buffer[p] == 0x00) break;
+        if (gd3buffer[p] == 0x0a) {
+          stlower = st;
+          stlower.toLowerCase();
+          if (stlower.indexOf("title=") == 0) {
+            s98tag.title = st.substring(6);
+          } else if (stlower.indexOf("artist=") == 0) {
+            s98tag.artist = st.substring(7);
+          } else if (stlower.indexOf("game=") == 0) {
+            s98tag.game = st.substring(5);
+          } else if (stlower.indexOf("year=") == 0) {
+            s98tag.year = st.substring(5);
+          } else if (stlower.indexOf("genre=") == 0) {
+            s98tag.genre = st.substring(6);
+          } else if (stlower.indexOf("comment=") == 0) {
+            s98tag.comment = st.substring(8);
+          } else if (stlower.indexOf("copyright=") == 0) {
+            s98tag.copyright = st.substring(10);
+          } else if (stlower.indexOf("s98by=") == 0) {
+            s98tag.s98by = st.substring(6);
+          } else if (stlower.indexOf("system=") == 0) {
+            s98tag.system = st.substring(7);
+          }
+          st = "";
+          stlower = "";
+        } else {
+          c[0] = gd3buffer[p];
+          st.concat(c);
+        }
+      }
+
+      st = s98tag.title;
+      st.concat(" / ");
+      st.concat(s98tag.game);
+      Display.set2(st);
+
+      st = s98tag.artist;
+      st.concat(" / ");
+      st.concat(s98tag.system);
+      Display.set3(st);
+      Display.set4("");
     }
-
-    st = s98tag.title;
-    st.concat(" / ");
-    st.concat(s98tag.game);
-    Display.set2(st);
-
-    st = s98tag.artist;
-    st.concat(" / ");
-    st.concat(s98tag.system);
-    Display.set3(st);
   }
+  
 
   // Set Clocks
   if (s98info.DeviceInfo[0].DeviceType == AY38910 ||
@@ -1136,6 +1161,26 @@ void s98Ready() {
         SI5351.setFreq(SI5351_7987);
         break;
     }
+  } else if (s98info.DeviceInfo[0].DeviceType == YM2151) {
+    switch (s98info.DeviceInfo[0].Clock) {
+      case 3375000:
+        SI5351.setFreq(SI5351_3375, 1);
+        break;
+      case 3500000:
+        SI5351.setFreq(SI5351_3500, 1);
+        break;
+      case 3579580:
+      case 3579545:
+      case 3580000:
+        SI5351.setFreq(SI5351_3579, 1);
+        break;
+      case 4000000:
+        SI5351.setFreq(SI5351_4000, 1);
+        break;
+      default:
+        SI5351.setFreq(SI5351_3579, 1);
+        break;
+    }
   }
 
   // 初期バッファ補充
@@ -1173,7 +1218,11 @@ void s98Process() {
       case 0x00:
         addr = get_vgm_ui8();
         data = get_vgm_ui8();
-        FM.set_register(addr, data, 0);
+        if (s98info.DeviceInfo[0].DeviceType == YM2151) {
+          FM.set_register_opm(addr, data);
+        } else {
+          FM.set_register(addr, data, 0);
+        }
         break;
       case 0x01:
         addr = get_vgm_ui8();
@@ -1216,9 +1265,8 @@ void s98Process() {
         break;
     }
 
-    if (s98info.Sync > 0) {
-      while ((get_timer_value() - startTime) <=
-             s98info.Sync * s98info.OneCycle) {
+    if (s98info.Sync > 2) {
+      while ((get_timer_value() - startTime) <= s98info.Sync * s98info.OneCycle) {
         if (s98info.Sync > 0) {
           if (Keypad.checkButton() != btnNONE) {
             return;
