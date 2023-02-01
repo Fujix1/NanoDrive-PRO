@@ -26,6 +26,7 @@ uint16_t KeypadClass::get_adc(int ch) {
 // ボタンの状態取得
 Button KeypadClass::readButton() {
   /*
+  電圧降下なし
   ボタン 押して無いとき 4095
   ボタン1 2985 - 2995
   ボタン2 2051 - 2065
@@ -39,12 +40,12 @@ Button KeypadClass::readButton() {
   uint16_t adcData = get_adc(6);
 
   //LCD_ShowNum(0, 64, adcData, 4, GREEN); // デバッグ用 実際の入力値表示
-  if (adcData > 3900) return btnNONE;                           // 4095, 戻り値 5
-  if (adcData < 200 && adcData >=0) return btnRIGHT;             // 0, 戻り値 0
-  if (adcData < 800 && adcData >= 500)  return btnUP;           // 585 - 595 , 戻り値 1
-  if (adcData < 1600 && adcData >= 1200) return btnDOWN;        // 1375 - 1385 , 戻り値 2
-  if (adcData < 2250 && adcData >= 2000 ) return btnLEFT;       // 2051 - 2065 , 戻り値 3
-  if (adcData < 3200 && adcData >= 2900 ) return btnSELECT;     // 2985 - 2995 , 戻り値 4
+  if (adcData > 3900) return btnNONE;                        // 4095, 戻り値 5
+  if (adcData < 200 && adcData >=0) return btnSELECT;        // 0, 戻り値 0
+  if (adcData < 800 && adcData >= 500)  return btnLEFT;      // 585 - 595 , 戻り値 1
+  if (adcData < 1600 && adcData >= 1200) return btnDOWN;     // 1375 - 1385 , 戻り値 2
+  if (adcData < 2250 && adcData >= 2000 ) return btnUP;      // 2051 - 2065 , 戻り値 3
+  if (adcData < 3200 && adcData >= 2900 ) return btnRIGHT;   // 2985 - 2995 , 戻り値 4
   return btnNONE;
 }
 

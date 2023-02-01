@@ -931,8 +931,18 @@ void vgmProcess() {
       while ((get_timer_value() - startTime) <= VGMinfo.Delay * ONE_CYCLE) {
         if (flag == false && VGMinfo.Delay > 3) {
           flag = true;
-          if (Keypad.checkButton() != btnNONE) {
-            return;
+          switch (Keypad.checkButton()) {
+            case btnNONE:
+            break;
+            case btnRIGHT:
+              Keypad.LastButton = btnNONE;
+
+            break;
+            case btnLEFT:
+            case btnUP:
+            case btnDOWN:
+            case btnSELECT:
+              return;
           }
           // LCD の長い曲名をスクロールする
           // タイミングずれるので無効
@@ -1265,7 +1275,7 @@ void s98Process() {
         break;
     }
 
-    if (s98info.Sync > 2) {
+    if (s98info.Sync > 1) {
       while ((get_timer_value() - startTime) <= s98info.Sync * s98info.OneCycle) {
         if (s98info.Sync > 0) {
           if (Keypad.checkButton() != btnNONE) {
