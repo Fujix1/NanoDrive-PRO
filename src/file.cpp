@@ -936,7 +936,7 @@ void vgmProcess() {
             break;
             case btnRIGHT:
               Keypad.LastButton = btnNONE;
-
+              PT2257.start_fadeout();
             break;
             case btnLEFT:
             case btnUP:
@@ -1278,8 +1278,18 @@ void s98Process() {
     if (s98info.Sync > 1) {
       while ((get_timer_value() - startTime) <= s98info.Sync * s98info.OneCycle) {
         if (s98info.Sync > 0) {
-          if (Keypad.checkButton() != btnNONE) {
-            return;
+          switch (Keypad.checkButton()) {
+            case btnNONE:
+            break;
+            case btnRIGHT:
+              Keypad.LastButton = btnNONE;
+              PT2257.start_fadeout();
+            break;
+            case btnLEFT:
+            case btnUP:
+            case btnDOWN:
+            case btnSELECT:
+              return;
           }
         }
       }
