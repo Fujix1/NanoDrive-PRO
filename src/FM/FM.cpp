@@ -13,29 +13,27 @@ extern "C" {
 #define D6 PA3
 #define D7 PA4
 
-#define A1 PB5
-#define A0 PB4
-#define WR PA12
-#define IC PA8
+#define A0 PA12
+#define A1 PA8
+#define WR PB4
+#define IC PA11
 
-#define CS0 PA11
-#define CS1 PB9
+#define CS0 PB8
+#define CS1 PB5
 
+#define A0_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_12)
+#define A0_LOW (GPIO_BC(GPIOA) = GPIO_PIN_12)
+#define A1_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_8)
+#define A1_LOW (GPIO_BC(GPIOA) = GPIO_PIN_8)
+#define WR_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_4)
+#define WR_LOW (GPIO_BC(GPIOB) = GPIO_PIN_4)
+#define IC_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_11)
+#define IC_LOW (GPIO_BC(GPIOA) = GPIO_PIN_11)
 
-
-#define A0_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_4)
-#define A0_LOW (GPIO_BC(GPIOB) = GPIO_PIN_4)
-#define A1_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)
-#define A1_LOW (GPIO_BC(GPIOB) = GPIO_PIN_5)
-#define WR_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_12)
-#define WR_LOW (GPIO_BC(GPIOA) = GPIO_PIN_12)
-#define IC_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_8)
-#define IC_LOW (GPIO_BC(GPIOA) = GPIO_PIN_8)
-
-#define CS0_HIGH (GPIO_BOP(GPIOA) = GPIO_PIN_11)
-#define CS0_LOW (GPIO_BC(GPIOA) = GPIO_PIN_11)
-#define CS1_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_9)
-#define CS1_LOW (GPIO_BC(GPIOB) = GPIO_PIN_9)
+#define CS0_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_8)
+#define CS0_LOW (GPIO_BC(GPIOB) = GPIO_PIN_8)
+#define CS1_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)
+#define CS1_LOW (GPIO_BC(GPIOB) = GPIO_PIN_5)
 
 
 void FMChip::begin() {
@@ -131,16 +129,15 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
 
   // 書き込み後の待ち時間
   if (a1 == 0) {
-    if (addr >= 0 && addr <= 0x0f) {
-      Tick.delay_500ns(); // SSG
-    } else {
-      Tick.delay_us(8); // リズム + FM 1-3
+    if (addr >= 0 && addr <= 0x0f) { // SSG
+      Tick.delay_us(1);
+    } else { // リズム + FM 1-3
+      Tick.delay_us(8);
     } 
   } else {
-    if (addr >= 0x30 && addr <= 0xb6) {
-      Tick.delay_us(8); // FM 4-6
-    } else {
-      // ADPCM
+    if (addr >= 0x30 && addr <= 0xb6) { // FM 4-6
+      Tick.delay_us(8);
+    } else {      // ADPCM
       //Tick.delay_us(5);
     } 
   }
@@ -174,7 +171,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {  // SSG
-      Tick.delay_500ns();
+      Tick.delay_us(1);
     } else if (addr >= 0x21 && addr <= 0x9e) {  // FM 1
       Tick.delay_us(15);
     } else if (addr >= 0xa0 && addr <= 0xb6) {  // FM 2

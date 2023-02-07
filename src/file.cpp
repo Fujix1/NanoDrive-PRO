@@ -14,12 +14,17 @@
 #define ONE_CYCLE 608u       // 速度決定（少ないほど速い）
                              // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
 
+#define PC98  PB9
+#define PC98_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_9)
+#define PC98_LOW (GPIO_BC(GPIOB) = GPIO_PIN_9)
+
 boolean mount_is_ok = false;
 uint8_t currentDir;                 // 今のディレクトリインデックス
 uint8_t currentFile;                // 今のファイルインデックス
 uint8_t numDirs = 0;                // ルートにあるディレクトリ数
 char **dirs;                        // ルートにあるディレクトリの配列
 uint8_t *attenuations;              // 各ディレクトリの減衰量 (デシベル)
+boolean *pc98mode;                  // 各ディレクトリの SSG 減衰設定 -3.5dB
 char ***files;                      // 各ディレクトリ内の vgm ファイル名配列
 uint8_t *numFiles;                  // 各ディレクトリ内の vgm ファイル数
 
@@ -105,13 +110,17 @@ typedef struct {
 } S98InfoStruct;
 S98InfoStruct s98info;
 
+
+
 //---------------------------------------------------------------
 // Init and open SD card
 // 初期化とSDオープン
 // ファイル構造の読み込み
 boolean sd_init() {
-  int i, j, n;
+  
+  pinMode(PC98, OUTPUT);
 
+  int i, j, n;
   DIR dir;
   FILINFO fno;
 
@@ -176,6 +185,7 @@ boolean sd_init() {
     files = (char ***)malloc(sizeof(char **) * numDirs);
     numFiles = new uint8_t[numDirs];
     attenuations = new uint8_t[numDirs];
+    pc98mode = new boolean[numDirs];
 
     //-------------------------------------------------------
     // フォルダ内ファイル情報取得（数える）
@@ -238,6 +248,17 @@ boolean sd_init() {
       fr = f_findfirst(&dir, &fno, dirs[i], "att14");
       if (fr == FR_OK && fno.fname[0]) {
         attenuations[i] = 14;
+      }
+
+      // フォルダ別 SSG 減衰設定
+      pc98mode[i] = false;
+      fr = f_findfirst(&dir, &fno, dirs[i], "low_ssg");
+      if (fr == FR_OK && fno.fname[0]) {
+        pc98mode[i] = true;
+      }
+      fr = f_findfirst(&dir, &fno, dirs[i], "pc98");
+      if (fr == FR_OK && fno.fname[0]) {
+        pc98mode[i] = true;
       }
     }
 
@@ -1237,7 +1258,11 @@ void s98Process() {
       case 0x01:
         addr = get_vgm_ui8();
         data = get_vgm_ui8();
-        FM.set_register(addr, data, 1);
+        if (s98info.DeviceInfo[1].DeviceType == YM2151) {
+          FM.set_register_opm(addr, data);
+        } else {
+          FM.set_register(addr, data, 1);
+        }
         break;
       case 0xFF:  // 1 sync wait
         s98info.Sync += 1;
@@ -1307,6 +1332,12 @@ void fileOpen(int d, int f) {
   fileLoaded = false;
   closeFile();
 
+  if (pc98mode[d]) {
+    PC98_HIGH;
+  } else {
+    PC98_LOW;
+  }
+  
   strcpy(st, dirs[d]);
   strcat(st, "/");
   strcat(st, files[d][f]);

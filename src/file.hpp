@@ -30,7 +30,6 @@ uint16_t    get_vgm_ui16();
 uint32_t    get_vgm_ui32();
 uint16_t    get_vgm_ui16_at(FSIZE_t pos);
 uint32_t    get_vgm_ui32_at(FSIZE_t pos);
-void        pause(uint32_t samples);
 
 boolean     openFile(char *);
 void        fileOpen(int, int);
