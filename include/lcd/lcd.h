@@ -5,7 +5,8 @@
 #include "stdlib.h"	
 #include "gd32vf103_gpio.h"
 
-#define USE_HORIZONTAL 2  //Set horizontal or vertical screen display 0 or 1 for vertical screen 2 or 3 for horizontal screen
+#define USE_HORIZONTAL 3
+  //Set horizontal or vertical screen display 0 or 1 for vertical screen 2 or 3 for horizontal screen
 #define HAS_BLK_CNTL    0
 
 #if USE_HORIZONTAL==0||USE_HORIZONTAL==1
