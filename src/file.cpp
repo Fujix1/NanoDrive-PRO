@@ -631,10 +631,9 @@ void checkYM2608DRAMType() {
         return;
         break;
       case 0x67: {
-        get_vgm_ui8();                       // dummy
+        get_vgm_ui8();                       // dummy 0x66
         uint8_t type = get_vgm_ui8();        // data type
         uint32_t dataSize = get_vgm_ui32();  // size of data, in bytes
-
         switch (type) {
           case 0:
             for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
@@ -819,6 +818,12 @@ void vgmProcess() {
         uint8_t type = get_vgm_ui8();        // data type
         uint32_t dataSize = get_vgm_ui32();  // size of data, in bytes
 
+        // YM2608 用 VGM でないのに ADPCM がある場合は無視
+        // 一部の YM2203 VGM に 空の ADPCM が存在しているので対策
+        if (VGMinfo.DeviceIsYM2608 == false) {
+          type = 0;
+        }
+        
         switch (type) {
           case 0x00: { // RAW PCM は飛ばす
             for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
@@ -827,7 +832,6 @@ void vgmProcess() {
             break;
           }  
           case 0x81:  // YM2608 DELTA-T ROM data
-
             get_vgm_ui32();                       // size of the entire ROM
             uint32_t startAddr = get_vgm_ui32();  // start address of data
 
