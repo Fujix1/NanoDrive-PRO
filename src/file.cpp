@@ -9,7 +9,7 @@
 #include "SI5351/SI5351.hpp"
 #include "keypad/keypad.hpp"
 
-#define BUFFERCAPACITY 1024  // VGMの読み込み単位（バイト）
+#define BUFFERCAPACITY 4096  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
 #define ONE_CYCLE 608u       // 速度決定（少ないほど速い）
                              // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
@@ -23,10 +23,13 @@ uint8_t currentDir;                 // 今のディレクトリインデック�
 uint8_t currentFile;                // 今のファイルインデックス
 uint8_t numDirs = 0;                // ルートにあるディレクトリ数
 char **dirs;                        // ルートにあるディレクトリの配列
-uint8_t *attenuations;              // 各ディレクトリの減衰量 (デシベル)
-boolean *pc98mode;                  // 各ディレクトリの SSG 減衰設定 -3.5dB
-char ***files;                      // 各ディレクトリ内の vgm ファイル名配列
-uint8_t *numFiles;                  // 各ディレクトリ内の vgm ファイル数
+
+
+char **dirFiles; // ディレクトリ内のファイルリスト
+uint8_t filesInADir = 0; // ファイル数
+boolean pc98 = false;    // フォルダ ssg 減衰設定
+uint8_t atte = 0; // フォルダ減衰率
+
 
 boolean fileOpened = false;          // ファイル開いてるか
 uint8_t dataBuffer[BUFFERCAPACITY];  // バッファ
@@ -115,7 +118,7 @@ S98InfoStruct s98info;
 //---------------------------------------------------------------
 // Init and open SD card
 // 初期化とSDオープン
-// ファイル構造の読み込み
+// フォルダ構造の読み込み
 boolean sd_init() {
   
   pinMode(PC98, OUTPUT);
@@ -179,104 +182,6 @@ boolean sd_init() {
         LCD_ShowString(0, 32, (u8 *)(dirs[n - 1]), CYAN);
       }
       f_findnext(&dir, &fno);
-    }
-
-    // 各フォルダ内のファイル数に応じて確保
-    files = (char ***)malloc(sizeof(char **) * numDirs);
-    numFiles = new uint8_t[numDirs];
-    attenuations = new uint8_t[numDirs];
-    pc98mode = new boolean[numDirs];
-
-    //-------------------------------------------------------
-    // フォルダ内ファイル情報取得（数える）
-    LCD_ShowString(0, 0, (u8 *)("READING FILES..."), GRAY);
-
-    for (i = 0; i < numDirs; i++) {
-      LCD_ShowString(0, 16, (u8 *)("             "), CYAN);
-      LCD_ShowString(0, 32, (u8 *)("             "), CYAN);
-      LCD_ShowString(0, 16, (u8 *)(dirs[i]), CYAN);
-
-      // .VGM か .S98 のファイル数取得
-      fr = f_findfirst(&dir, &fno, dirs[i], "*.*");
-      n = 0;
-      while (fr == FR_OK && fno.fname[0]) {
-        // 拡張子チェック
-        const char *ext = strrchr(fno.fname, '.');
-        if (strcmp(".VGM", ext) == 0 || strcmp(".S98", ext) == 0) {
-          n++;
-        }
-        f_findnext(&dir, &fno);
-      }
-
-      // ファイル名保持用配列メモリ確保
-      if (n > 0) {
-        files[i] = (char **)malloc(sizeof(char *) * n);
-        for (j = 0; j < n; j++) {
-          files[i][j] = (char *)malloc(sizeof(char) * 13);
-        }
-      }
-      // フォルダ内のファイル数保持配列設定
-      numFiles[i] = n;
-
-      // フォルダノーマライズ
-      // 以下の名前を含むファイルがあれば全部 att* dB 下げる
-      attenuations[i] = 0;
-      fr = f_findfirst(&dir, &fno, dirs[i], "att2");
-      if (fr == FR_OK && fno.fname[0]) {
-        attenuations[i] = 2;
-      }
-      fr = f_findfirst(&dir, &fno, dirs[i], "att4");
-      if (fr == FR_OK && fno.fname[0]) {
-        attenuations[i] = 4;
-      }
-      fr = f_findfirst(&dir, &fno, dirs[i], "att6");
-      if (fr == FR_OK && fno.fname[0]) {
-        attenuations[i] = 6;
-      }
-      fr = f_findfirst(&dir, &fno, dirs[i], "att8");
-      if (fr == FR_OK && fno.fname[0]) {
-        attenuations[i] = 8;
-      }
-      fr = f_findfirst(&dir, &fno, dirs[i], "att10");
-      if (fr == FR_OK && fno.fname[0]) {
-        attenuations[i] = 10;
-      }
-      fr = f_findfirst(&dir, &fno, dirs[i], "att12");
-      if (fr == FR_OK && fno.fname[0]) {
-        attenuations[i] = 12;
-      }
-      fr = f_findfirst(&dir, &fno, dirs[i], "att14");
-      if (fr == FR_OK && fno.fname[0]) {
-        attenuations[i] = 14;
-      }
-
-      // フォルダ別 SSG 減衰設定
-      pc98mode[i] = false;
-      fr = f_findfirst(&dir, &fno, dirs[i], "low_ssg");
-      if (fr == FR_OK && fno.fname[0]) {
-        pc98mode[i] = true;
-      }
-      fr = f_findfirst(&dir, &fno, dirs[i], "pc98");
-      if (fr == FR_OK && fno.fname[0]) {
-        pc98mode[i] = true;
-      }
-    }
-
-    // .VGMと.S98のファイル名取得
-    if (n > 0) {
-      for (i = 0; i < numDirs; i++) {
-        fr = f_findfirst(&dir, &fno, dirs[i], "*.*");
-        n = 0;
-        while (fr == FR_OK && fno.fname[0]) {
-          // 拡張子チェック
-          const char *ext = strrchr(fno.fname, '.');
-          if (strcmp(".VGM", ext) == 0 || strcmp(".S98", ext) == 0) {
-            strcpy(files[i][n], fno.fname);
-            n++;
-          }
-          f_findnext(&dir, &fno);
-        }
-      }
     }
 
     return true;
@@ -722,7 +627,7 @@ void vgmProcess() {
 
   while (1) {
     if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
-      if (numFiles[currentDir] - 1 == currentFile) {
+      if (filesInADir - 1 == currentFile) {
         Keypad.LastButton = btnSELECT;
       } else {
         Keypad.LastButton = btnDOWN;
@@ -796,7 +701,7 @@ void vgmProcess() {
 
       case 0x66:
         if (!VGMinfo.LoopOffset) {  // ループしない曲
-          if (numFiles[currentDir] - 1 == currentFile) {
+          if (filesInADir - 1 == currentFile) {
             Keypad.LastButton = btnSELECT;
           } else {
             Keypad.LastButton = btnDOWN;
@@ -946,7 +851,7 @@ void vgmProcess() {
     }
 
     if (unmuted == false && unmutenow) {
-      PT2257.reset(attenuations[currentDir]); 
+      PT2257.reset(atte); 
       unmuted = true;
     }
 
@@ -1232,7 +1137,7 @@ void s98Process() {
 
   while (fileLoaded) {
     if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
-      if (numFiles[currentDir] - 1 == currentFile) {
+      if (filesInADir - 1 == currentFile) {
         Keypad.LastButton = btnSELECT;
       } else {
         Keypad.LastButton = btnDOWN;
@@ -1286,7 +1191,7 @@ void s98Process() {
       case 0xFD:
         timeUpdateFlag = true;
         if (s98info.LoopAddress == 0) {  // ループしない曲
-          if (numFiles[currentDir] - 1 == currentFile) {
+          if (filesInADir - 1 == currentFile) {
             Keypad.LastButton = btnSELECT;
           } else {
             Keypad.LastButton = btnDOWN;
@@ -1336,7 +1241,7 @@ void fileOpen(int d, int f) {
   fileLoaded = false;
   closeFile();
 
-  if (pc98mode[d]) {
+  if (pc98) {
     PC98_HIGH;
   } else {
     PC98_LOW;
@@ -1344,11 +1249,11 @@ void fileOpen(int d, int f) {
   
   strcpy(st, dirs[d]);
   strcat(st, "/");
-  strcat(st, files[d][f]);
+  strcat(st, dirFiles[f]);
 
   if (openFile(st)) {
     // 拡張子チェック
-    const char *ext = strrchr(files[d][f], '.');
+    const char *ext = strrchr(dirFiles[f], '.');
     if (strcmp(".VGM", ext) == 0) {
       fileType = VGM;
     } else if (strcmp(".S98", ext) == 0) {
@@ -1362,14 +1267,14 @@ void fileOpen(int d, int f) {
         checkYM2608DRAMType();
         FM.reset();
         Tick.delay_ms(16);
-        //PT2257.reset(attenuations[d]);
+        //PT2257.reset(atte);
         vgmProcess();
         break;
       case S98:
         s98Ready();
         FM.reset();
         Tick.delay_ms(16);
-        PT2257.reset(attenuations[d]);
+        PT2257.reset(atte);
         s98Process();
         break;
       default:
@@ -1381,17 +1286,111 @@ void fileOpen(int d, int f) {
 //----------------------------------------------------------------------
 // ディレクトリ内の count 個あとの曲再生。マイナスは前の曲
 void filePlay(int count) {
-  currentFile = mod(currentFile + count, numFiles[currentDir]);
+  currentFile = mod(currentFile + count, filesInADir);
   fileOpen(currentDir, currentFile);
 }
 
+
 //----------------------------------------------------------------------
-// count
-// 個あとのディレクトリを開いて最初のファイルを再生。マイナスは前のディレクトリ
-void openDirectory(int count) {
+// count 個あとのフォルダを開いてファイルリスト取得
+// 最初のファイルを再生。マイナスは前のディレクトリ
+// 再生するファイルがない場合は false を返す
+
+boolean openFolder(int count) {
   currentFile = 0;
   currentDir = mod(currentDir + count, numDirs);
-  fileOpen(currentDir, currentFile);
+  LCD_Clear(BLACK);
+  LCD_ShowString(0, 0, (u8 *)("OPENING FOLDER..."), GRAY);
+  LCD_ShowString(0, 16, (u8 *)(dirs[currentDir]), GRAY);
+
+  // 初期化
+  atte = 0;
+  pc98 = false;
+
+  // 配列のメモリ解放
+  for ( unsigned int i = 0; i < filesInADir; i++) {
+    free(dirFiles[i]);
+  }
+  free(dirFiles);
+
+  // フォルダ内ファイル数える
+  DIR dir;
+  FILINFO fno;
+  byte n;
+
+  // .VGM か .S98 のファイル数取得
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "*.*");
+  n = 0;
+  while (fr == FR_OK && fno.fname[0]) {
+    // 拡張子チェック
+    const char *ext = strrchr(fno.fname, '.');
+    if (strcmp(".VGM", ext) == 0 || strcmp(".S98", ext) == 0) {
+      n++;
+    }
+    f_findnext(&dir, &fno);
+  }
+  filesInADir = n;
+
+  if (n == 0) {
+    return false;
+  }
+
+  // フォルダ別設定
+  // 以下の名前を含むファイルがあれば全部 att* dB 下げる
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "att2");
+  if (fr == FR_OK && fno.fname[0]) {
+    atte = 2;
+  }
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "att4");
+  if (fr == FR_OK && fno.fname[0]) {
+    atte = 4;
+  }
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "att6");
+  if (fr == FR_OK && fno.fname[0]) {
+    atte = 6;
+  }
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "att8");
+  if (fr == FR_OK && fno.fname[0]) {
+    atte = 8;
+  }
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "att10");
+  if (fr == FR_OK && fno.fname[0]) {
+    atte = 10;
+  }
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "att12");
+  if (fr == FR_OK && fno.fname[0]) {
+    atte = 12;
+  }
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "att14");
+  if (fr == FR_OK && fno.fname[0]) {
+    atte = 14;
+  }
+
+  // フォルダ別 SSG 減衰設定
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "pc98");
+  if (fr == FR_OK && fno.fname[0]) {
+    pc98 = true;
+  }
+
+  // ファイル名保持用配列メモリ確保
+  dirFiles = (char **)malloc(sizeof(char *) * n);
+  for (int i = 0; i < n; i++) {
+    dirFiles[i] = (char *)malloc(sizeof(char) * 13);
+  }
+
+  // .VGMと.S98のファイル名取得
+  fr = f_findfirst(&dir, &fno, dirs[currentDir], "*.*");
+  n = 0;
+  while (fr == FR_OK && fno.fname[0]) {
+    // 拡張子チェック
+    const char *ext = strrchr(fno.fname, '.');
+    if (strcmp(".VGM", ext) == 0 || strcmp(".S98", ext) == 0) {
+      strcpy(dirFiles[n], fno.fname);
+      n++;
+    }
+    f_findnext(&dir, &fno);
+  }
+  return true;
 }
 
 int mod(int i, int j) {

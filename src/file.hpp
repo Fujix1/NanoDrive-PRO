@@ -34,7 +34,7 @@ uint32_t    get_vgm_ui32_at(FSIZE_t pos);
 boolean     openFile(char *);
 void        fileOpen(int, int);
 void        filePlay(int);
-void        openDirectory(int);
+boolean     openFolder(int);
 int         mod(int i, int j);
 
 void        vgmReady();

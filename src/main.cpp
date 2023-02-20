@@ -44,6 +44,7 @@ void setup() {
   Tick.delay_ms(200);  // SDカード安定用
   sd_init();           // ファイル初期化
 
+  openFolder(0);
   filePlay(0);
 }
 
@@ -52,11 +53,13 @@ void loop() {
   switch (Keypad.LastButton) {
     case btnSELECT:  // ◯－－－－
       Keypad.LastButton = btnNONE;
-      openDirectory(1);
+      while (!openFolder(+1));
+      filePlay(0);
       break;
     case btnLEFT:  // －◯－－－
       Keypad.LastButton = btnNONE;
-      openDirectory(-1);
+      while (!openFolder(-1));
+      filePlay(0);
       break;
     case btnDOWN:  // －－◯－－
       Keypad.LastButton = btnNONE;
