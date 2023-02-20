@@ -124,19 +124,18 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   }
   WR_LOW;
   Tick.delay_500ns();
-  Tick.delay_500ns();
   WR_HIGH;
 
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) { // SSG
-      //Tick.delay_us(1);
+
     } else { // リズム + FM 1-3
-      Tick.delay_us(8);
+      Tick.delay_us(9);
     } 
   } else {
     if (addr >= 0x30 && addr <= 0xb6) { // FM 4-6
-      Tick.delay_us(8);
+      Tick.delay_us(9);
     } else {      // ADPCM
       //Tick.delay_us(5);
     } 
@@ -147,15 +146,11 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   
   A0_HIGH;
   Tick.delay_500ns();
-
   // WR_LOW -> WR_HIGH:  Tww 200ns
   //   D0-D7: Twds 100ns
-
   WR_LOW;
   Tick.delay_500ns();
-
   set_output(data);
-
   Tick.delay_500ns(); //  Tww 最小 200ns
   WR_HIGH;
 
@@ -171,7 +166,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {  // SSG
-      //Tick.delay_us(1);
+      Tick.delay_us(16);
     } else if (addr >= 0x21 && addr <= 0x9e) {  // FM 1
       Tick.delay_us(15);
     } else if (addr >= 0xa0 && addr <= 0xb6) {  // FM 2
@@ -187,9 +182,10 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
     } else if (addr >= 0xa0 && addr <= 0xb6) { // FM
       Tick.delay_us(9);
     } else {  // ADPCM
-      //Tick.delay_us(5);
+      
     } 
   }
+
 
   CS0_HIGH;
   A0_LOW;
