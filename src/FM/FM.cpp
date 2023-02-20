@@ -196,30 +196,21 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
 void FMChip::set_register_opm(byte addr, byte data) {
 
   set_output(addr);
-
   A0_LOW;
   CS1_LOW;
-
   WR_LOW;
   Tick.delay_500ns();
-  Tick.delay_500ns();
   WR_HIGH;
-
-  Tick.delay_us(4);
+  Tick.delay_us(2); // 最低 2us
  
   A0_HIGH;
   Tick.delay_500ns();
-
   WR_LOW;
   Tick.delay_500ns();
-
   set_output(data);
-
   Tick.delay_500ns();
   WR_HIGH;
-
-  Tick.delay_us(18); 
-
+  Tick.delay_us(17); // 最低 16us
   CS1_HIGH;
   A0_LOW;
 

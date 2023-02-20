@@ -11,7 +11,7 @@
 
 #define BUFFERCAPACITY 4096  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
-#define ONE_CYCLE 608u       // 速度決定（少ないほど速い）
+#define ONE_CYCLE 609u       // 速度決定（少ないほど速い）
                              // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
 
 #define PC98  PB9
