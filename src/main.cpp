@@ -1,6 +1,7 @@
 /*
- *  VGM player on Longan Nano
- *  Fujix
+ *  Longan Nano VGM player
+ *  YM2608 and YM2151
+ *  by Fujix 2023
  */
 
 #include <Arduino.h>

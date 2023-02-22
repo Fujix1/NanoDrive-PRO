@@ -21,14 +21,14 @@
 boolean mount_is_ok = false;
 uint8_t currentDir;                 // 今のディレクトリインデックス
 uint8_t currentFile;                // 今のファイルインデックス
-uint8_t numDirs = 0;                // ルートにあるディレクトリ数
+uint16_t numDirs = 0;               // ルートにあるディレクトリ数
 char **dirs;                        // ルートにあるディレクトリの配列
 
 
-char **dirFiles; // ディレクトリ内のファイルリスト
-uint8_t filesInADir = 0; // ファイル数
-boolean pc98 = false;    // フォルダ ssg 減衰設定
-uint8_t atte = 0; // フォルダ減衰率
+char **dirFiles;                    // フォルダ内のファイルリスト
+uint8_t numFilesInDir = 0;          // ファイル数
+boolean pc98 = false;               // フォルダ ssg 減衰設定
+uint8_t atte = 0;                   // フォルダ減衰率
 
 
 boolean fileOpened = false;          // ファイル開いてるか
@@ -38,9 +38,9 @@ uint32_t filesize = 0;               // ファイルサイズ
 UINT bufferSize = 0;                 // 現在のバッファ容量
 NDFileType fileType = UNDEFINED;     // プレイ中のファイル種
 
-uint64_t startTime;                 // 基準時間
-boolean fileLoaded = false;         // ファイルが読み込まれた状態か
-uint8_t songLoop = 0;               // 現在のループ回数
+uint64_t startTime;                  // 基準時間
+boolean fileLoaded = false;          // ファイルが読み込まれた状態か
+uint8_t songLoop = 0;                // 現在のループ回数
 
 // File handlers
 FATFS fs;
@@ -622,12 +622,11 @@ void vgmProcess() {
   fr = f_read(&fil, dataBuffer, BUFFERCAPACITY, &bufferSize);
   bufferPos = 0;
 
-  boolean unmuted = false; //
   boolean unmutenow = false; 
 
   while (1) {
     if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
-      if (filesInADir - 1 == currentFile) {
+      if (numFilesInDir - 1 == currentFile) {
         Keypad.LastButton = btnSELECT;
       } else {
         Keypad.LastButton = btnDOWN;
@@ -701,7 +700,7 @@ void vgmProcess() {
 
       case 0x66:
         if (!VGMinfo.LoopOffset) {  // ループしない曲
-          if (filesInADir - 1 == currentFile) {
+          if (numFilesInDir - 1 == currentFile) {
             Keypad.LastButton = btnSELECT;
           } else {
             Keypad.LastButton = btnDOWN;
@@ -850,9 +849,8 @@ void vgmProcess() {
         break;
     }
 
-    if (unmuted == false && unmutenow) {
+    if (PT2257.muted == false && unmutenow) {
       PT2257.reset(atte); 
-      unmuted = true;
     }
 
     if (VGMinfo.Delay > 0) {
@@ -1137,7 +1135,7 @@ void s98Process() {
 
   while (fileLoaded) {
     if (PT2257.process_fadeout()) {  // フェードアウト完了なら次の曲
-      if (filesInADir - 1 == currentFile) {
+      if (numFilesInDir - 1 == currentFile) {
         Keypad.LastButton = btnSELECT;
       } else {
         Keypad.LastButton = btnDOWN;
@@ -1191,7 +1189,7 @@ void s98Process() {
       case 0xFD:
         timeUpdateFlag = true;
         if (s98info.LoopAddress == 0) {  // ループしない曲
-          if (filesInADir - 1 == currentFile) {
+          if (numFilesInDir - 1 == currentFile) {
             Keypad.LastButton = btnSELECT;
           } else {
             Keypad.LastButton = btnDOWN;
@@ -1286,7 +1284,7 @@ void fileOpen(int d, int f) {
 //----------------------------------------------------------------------
 // ディレクトリ内の count 個あとの曲再生。マイナスは前の曲
 void filePlay(int count) {
-  currentFile = mod(currentFile + count, filesInADir);
+  currentFile = mod(currentFile + count, numFilesInDir);
   fileOpen(currentDir, currentFile);
 }
 
@@ -1297,6 +1295,9 @@ void filePlay(int count) {
 // 再生するファイルがない場合は false を返す
 
 boolean openFolder(int count) {
+
+  PT2257.mute();
+
   currentFile = 0;
   currentDir = mod(currentDir + count, numDirs);
   LCD_Clear(BLACK);
@@ -1308,7 +1309,7 @@ boolean openFolder(int count) {
   pc98 = false;
 
   // 配列のメモリ解放
-  for ( unsigned int i = 0; i < filesInADir; i++) {
+  for ( unsigned int i = 0; i < numFilesInDir; i++) {
     free(dirFiles[i]);
   }
   free(dirFiles);
@@ -1329,7 +1330,7 @@ boolean openFolder(int count) {
     }
     f_findnext(&dir, &fno);
   }
-  filesInADir = n;
+  numFilesInDir = n;
 
   if (n == 0) {
     return false;
