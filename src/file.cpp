@@ -11,7 +11,7 @@
 
 #define BUFFERCAPACITY 4096  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
-#define ONE_CYCLE 609u       // 速度決定（少ないほど速い）
+#define ONE_CYCLE 608u       // 速度
                              // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
 
 #define PC98  PB9
@@ -123,7 +123,7 @@ boolean sd_init() {
   
   pinMode(PC98, OUTPUT);
 
-  int i, j, n;
+  int i, n;
   DIR dir;
   FILINFO fno;
 
@@ -772,7 +772,7 @@ void vgmProcess() {
             if (VGMinfo.DRAMIs8bits) {
               wait = 1;  // 8 bit はウェイトほぼ不要
             } else {
-              wait = 20;  // 1 bit アクセスは時間がかかる 最低18usくらい
+              wait = 28;  // 1 bit アクセスは遅い
             }
 
             for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
@@ -849,7 +849,7 @@ void vgmProcess() {
         break;
     }
 
-    if (PT2257.muted == false && unmutenow) {
+    if (PT2257.muted && unmutenow) {
       PT2257.reset(atte); 
     }
 

@@ -30,22 +30,22 @@ Button KeypadClass::readButton() {
   ボタン 押して無いとき 4095
   ボタン1 2985 - 2995   低電圧時 3000
   ボタン2 2051 - 2065   低電圧時 2200
-  ボタン3 1375 - 1385   低電圧時 1500
-  ボタン4 582 - 592     低電圧時 850
-  ボタン5 8 - 20        低電圧時 300
+  ボタン3 1375 - 1385   低電圧時 1600
+  ボタン4 582 - 592     低電圧時 900
+  ボタン5 8 - 20        低電圧時 350
   */
  
   //adc_software_trigger_enable(ADC0, ADC_INSERTED_CHANNEL);
   //int adcData = ADC_IDATA0(ADC0);
   uint16_t adcData = get_adc(6);
 
-  //LCD_ShowNum(0, 64, adcData, 4, GREEN); // デバッグ用 実際の入力値表示
-  if (adcData > 3900) return btnNONE;                        // 4095, 戻り値 5
-  if (adcData < 400 && adcData >=0) return btnSELECT;        // 0, 戻り値 0
-  if (adcData < 1000 && adcData >= 530)  return btnLEFT;     // 585 - 595 , 戻り値 1
-  if (adcData < 1600 && adcData >= 1100) return btnDOWN;     // 1375 - 1385 , 戻り値 2
+  // LCD_ShowNum(0, 64, adcData, 4, GRAY); // デバッグ用 実際の入力値表示
+  if (adcData > 3800) return btnNONE;                        // 4095, 戻り値 5
+  if (adcData < 450 && adcData >=0) return btnSELECT;        // 0, 戻り値 0
+  if (adcData < 1000 && adcData >= 540)  return btnLEFT;     // 585 - 595 , 戻り値 1
+  if (adcData < 1700 && adcData >= 1200) return btnDOWN;     // 1375 - 1385 , 戻り値 2
   if (adcData < 2350 && adcData >= 1900) return btnUP;       // 2051 - 2065 , 戻り値 3
-  if (adcData < 3200 && adcData >= 2500) return btnRIGHT;    // 2985 - 2995 , 戻り値 4
+  if (adcData < 3200 && adcData >= 2700) return btnRIGHT;    // 2985 - 2995 , 戻り値 4
   return btnNONE;
 }
 
