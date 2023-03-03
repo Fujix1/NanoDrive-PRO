@@ -6,4 +6,4 @@ This project is an attempt to play vgm using the YM2608 and YM2151 chips with th
 
 # Schematics
 
-[schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/10721268/schematics.pdf)
+[Schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/10880872/Schematics.pdf)
