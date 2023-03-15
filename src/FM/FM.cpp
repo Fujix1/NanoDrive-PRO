@@ -82,7 +82,8 @@ void FMChip::set_output(byte data) {
   GPIO_BOP(GPIOA) = (data & 0b11111000) >> 3;  // D3, D4 ,D5, D6, D7
 }
 
-void FMChip::set_register(byte addr, byte data, boolean a1=0) {
+u_int8_t FMChip::set_register(byte addr, byte data, boolean a1=0) {
+  uint8_t wait = 0;
 
   /* リズムオフ
   if (a1==0 && addr==0x10) {
@@ -132,10 +133,12 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
 
     } else { // リズム + FM 1-3
       Tick.delay_us(10);
+      wait+=10;
     } 
   } else {
     if (addr >= 0x30 && addr <= 0xb6) { // FM 4-6
       Tick.delay_us(10);
+      wait+=10;
     } else {      // ADPCM
       //Tick.delay_us(5);
     } 
@@ -167,33 +170,44 @@ void FMChip::set_register(byte addr, byte data, boolean a1=0) {
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {  // SSG
       Tick.delay_us(16);
+      wait+=16;
     } else if (addr >= 0x21 && addr <= 0x9e) {  // FM 1
       Tick.delay_us(16);
+      wait+=16;
     } else if (addr >= 0xa0 && addr <= 0xb6) {  // FM 2
       Tick.delay_us(10);
+      wait+=10;
     } else if (addr == 0x10) {  // Rythm 1
       Tick.delay_us(77);
+      wait+=77;
     } else { // Rythm 2
       Tick.delay_us(16);
+      wait+=16;
     }
   } else {
     if (addr >= 0x21 && addr <= 0x9e) {  // FM
       Tick.delay_us(16); 
+      wait+=16;
     } else if (addr >= 0xa0 && addr <= 0xb6) { // FM
       Tick.delay_us(10);
+      wait+=10;
     } else {  // ADPCM
       
-    } 
+    }
   }
-
 
   CS0_HIGH;
   A0_LOW;
   A1_LOW;
-
+  if (wait>=24) {
+    return wait-24;
+  } else {
+    return 0;
+  }
 }
 
-void FMChip::set_register_opm(byte addr, byte data) {
+u_int8_t FMChip::set_register_opm(byte addr, byte data) {
+  uint8_t wait = 0;
 
   set_output(addr);
   A0_LOW;
@@ -202,7 +216,8 @@ void FMChip::set_register_opm(byte addr, byte data) {
   Tick.delay_500ns();
   WR_HIGH;
   Tick.delay_us(4); // 最低 3us
- 
+  wait+=4;
+
   A0_HIGH;
   Tick.delay_500ns();
   WR_LOW;
@@ -211,9 +226,15 @@ void FMChip::set_register_opm(byte addr, byte data) {
   Tick.delay_500ns();
   WR_HIGH;
   Tick.delay_us(20); // 最低 18us
+  wait+=20;
   CS1_HIGH;
   A0_LOW;
 
+  if (wait>=22) {
+    return wait-22;
+  } else {
+    return 0;
+  }
 }
 
 FMChip FM;

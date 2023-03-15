@@ -43,8 +43,8 @@ Button KeypadClass::readButton() {
   if (adcData > 3800) return btnNONE;                        // 4095, 戻り値 5
   if (adcData < 450 && adcData >=0) return btnSELECT;        // 0, 戻り値 0
   if (adcData < 1000 && adcData >= 540)  return btnLEFT;     // 585 - 595 , 戻り値 1
-  if (adcData < 1700 && adcData >= 1200) return btnDOWN;     // 1375 - 1385 , 戻り値 2
-  if (adcData < 2350 && adcData >= 1900) return btnUP;       // 2051 - 2065 , 戻り値 3
+  if (adcData < 1650 && adcData >= 1200) return btnDOWN;     // 1375 - 1385 , 戻り値 2
+  if (adcData < 2350 && adcData >= 2000) return btnUP;       // 2051 - 2065 , 戻り値 3
   if (adcData < 3200 && adcData >= 2700) return btnRIGHT;    // 2985 - 2995 , 戻り値 4
   return btnNONE;
 }

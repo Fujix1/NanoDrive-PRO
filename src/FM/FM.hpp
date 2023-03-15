@@ -8,8 +8,8 @@ class FMChip {
  public:
   void begin();
   void reset();
-  void set_register(byte addr, byte value, boolean a1);
-  void set_register_opm(byte addr, byte value);
+  u_int8_t set_register(byte addr, byte value, boolean a1);
+  u_int8_t set_register_opm(byte addr, byte value);
   void set_output(byte);
 };
 

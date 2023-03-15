@@ -9,14 +9,15 @@
 #include "SI5351/SI5351.hpp"
 #include "keypad/keypad.hpp"
 
-#define BUFFERCAPACITY 4096  // VGMの読み込み単位（バイト）
+#define BUFFERCAPACITY 5120  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
-#define ONE_CYCLE 608u       // 速度
-                             // 22.67573696145125 * 27 = 612.24  // 1000000 / 44100
-
+#define ONE_CYCLE 612u       // 速度
+                             // 22.67573696145125 * 27 = 612.24
+                             // 1000000 / 44100 * 27
 #define PC98  PB9
 #define PC98_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_9)
 #define PC98_LOW (GPIO_BC(GPIOB) = GPIO_PIN_9)
+
 
 boolean mount_is_ok = false;
 uint8_t currentDir;                 // 今のディレクトリインデックス
@@ -24,12 +25,10 @@ uint8_t currentFile;                // 今のファイルインデックス
 uint16_t numDirs = 0;               // ルートにあるディレクトリ数
 char **dirs;                        // ルートにあるディレクトリの配列
 
-
 char **dirFiles;                    // フォルダ内のファイルリスト
 uint8_t numFilesInDir = 0;          // ファイル数
 boolean pc98 = false;               // フォルダ ssg 減衰設定
 uint8_t atte = 0;                   // フォルダ減衰率
-
 
 boolean fileOpened = false;          // ファイル開いてるか
 uint8_t dataBuffer[BUFFERCAPACITY];  // バッファ
@@ -41,6 +40,7 @@ NDFileType fileType = UNDEFINED;     // プレイ中のファイル種
 uint64_t startTime;                  // 基準時間
 boolean fileLoaded = false;          // ファイルが読み込まれた状態か
 uint8_t songLoop = 0;                // 現在のループ回数
+uint32_t compensation = 0;
 
 // File handlers
 FATFS fs;
@@ -320,6 +320,7 @@ void vgmReady() {
   songLoop = 0;
   VGMinfo.Delay = 0;
   VGMinfo.DeviceIsYM2608 = false;
+  compensation = 0;
 
   // VGM Version
   VGMinfo.Version = get_vgm_ui32_at(8);
@@ -643,7 +644,7 @@ void vgmProcess() {
       case 0xA0:  // AY8910, YM2203 PSG, YM2149, YMZ294D
         dat = get_vgm_ui8();
         reg = get_vgm_ui8();
-        FM.set_register(dat, reg, 0);
+        compensation += FM.set_register(dat, reg, 0);
         unmutenow = true;
         break;
       case 0x30:  // SN76489 CHIP 2
@@ -655,25 +656,25 @@ void vgmProcess() {
       case 0x54:  // YM2151
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
-        FM.set_register_opm(reg, dat);
+        compensation += FM.set_register_opm(reg, dat);
         unmutenow = true;
         break;
       case 0x55:  // YM2203_0
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
-        FM.set_register(reg, dat, 0);
+        compensation += FM.set_register(reg, dat, 0);
         unmutenow = true;
         break;
       case 0x56:  // YM2608 port 0
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
-        FM.set_register(reg, dat, 0);
+        compensation += FM.set_register(reg, dat, 0);
         unmutenow = true;
         break;
       case 0x57:  // YM2608 port 1
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
-        FM.set_register(reg, dat, 1);
+        compensation += FM.set_register(reg, dat, 1);
         unmutenow = true;
         break;
       case 0x5A:  // YM3812
@@ -729,7 +730,7 @@ void vgmProcess() {
         }
         
         switch (type) {
-          case 0x00: { // RAW PCM は飛ばす
+          case 0x00: { // Ignore RAW PCM は飛ばす
             for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
               get_vgm_ui8();
             }
@@ -857,6 +858,15 @@ void vgmProcess() {
       bool flag = false;
 
       while ((get_timer_value() - startTime) <= VGMinfo.Delay * ONE_CYCLE) {
+        if (VGMinfo.Delay>=compensation) {
+          VGMinfo.Delay -= compensation;
+          compensation = 0;
+        } else {
+          compensation -= VGMinfo.Delay;
+          VGMinfo.Delay = 0;
+          break;
+        }
+
         if (flag == false && VGMinfo.Delay > 3) {
           flag = true;
           switch (Keypad.checkButton()) {
