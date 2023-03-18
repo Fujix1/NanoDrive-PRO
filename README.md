@@ -22,6 +22,15 @@ This project is an attempt to play vgm (and s98) files using the YM2608 and YM21
 5. Per-folder volume adjustment by -2 to -12dB.
 6. Pre-mounted SOP DRAM, inverter IC and switch IC.
 
+## 回路図 / Schematics
+
+[Schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/11007896/Schematics.pdf)
+
+## マニュアル / Japanese Manual
+
+[NanoDrivePro_Manual.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/10985764/NanoDrivePro_Manual.pdf)
+
+
 ## 部品表 / Parts List
 
 <!DOCTYPE html>
@@ -355,12 +364,3 @@ This project is an attempt to play vgm (and s98) files using the YM2608 and YM21
 </tbody>
 </table>
 </body>
-
-
-## 回路図 / Schematics
-
-[Schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/11007896/Schematics.pdf)
-
-## マニュアル / Japanese Manual
-
-[NanoDrivePro_Manual.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/10985764/NanoDrivePro_Manual.pdf)
