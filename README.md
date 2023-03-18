@@ -24,7 +24,7 @@ This project is an attempt to play vgm (and s98) files using the YM2608 and YM21
 
 ## 回路図 / Schematics
 
-![Schematics](https://user-images.githubusercontent.com/13434151/226095880-5762a8d0-e545-4919-972d-8ea656d929b5.svg)
+![schematics](https://user-images.githubusercontent.com/13434151/226095985-d8a9c6d5-1937-4758-8f7a-3fc31d9de6ca.svg)
 
 [Schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/11007896/Schematics.pdf)
 
