@@ -6,7 +6,7 @@ This project is an attempt to play vgm (and s98) files using the YM2608 and YM21
 
 # Schematics
 
-[Schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/10880872/Schematics.pdf)
+[Schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/11007896/Schematics.pdf)
 
 # Japanese Manual
 
