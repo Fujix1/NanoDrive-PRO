@@ -404,6 +404,7 @@ void vgmReady() {
       case 1536000:
         SI5351.setFreq(SI5351_6144, 0);
         break;
+      case 1789750:
       case 1789772:
       case 1789773:
       case 1789775:
