@@ -419,7 +419,10 @@ void vgmReady() {
     }
   }
 
-  uint32_t vgm_ym2203_clock = get_vgm_ui32_at(0x44);
+  uint32_t vgm_ym2203_clock = 
+        (VGMinfo.Version >= 0x151 && VGMinfo.DataOffset >= 0x78)
+          ? get_vgm_ui32_at(0x44)
+          : 0;
   if (vgm_ym2203_clock) {
     switch (vgm_ym2203_clock) {
       case 3000000:  // 3MHz
@@ -447,7 +450,10 @@ void vgmReady() {
     }
   }
 
-  uint32_t vgm_ym2608_clock = get_vgm_ui32_at(0x48);
+  uint32_t vgm_ym2608_clock = 
+        (VGMinfo.Version >= 0x151 && VGMinfo.DataOffset >= 0x78)
+          ? get_vgm_ui32_at(0x48)
+          : 0;
   if (vgm_ym2608_clock) {
     VGMinfo.DeviceIsYM2608 = true;
     switch (vgm_ym2608_clock) {
@@ -498,12 +504,10 @@ void checkYM2608DRAMType() {
     return;
   }
 
-  // VGM Version
-  VGMinfo.Version = get_vgm_ui32_at(8);
-
-  // Data offset
-  VGMinfo.DataOffset =
-      (VGMinfo.Version >= 0x150) ? get_vgm_ui32_at(0x34) + 0x34 : 0x40;
+  // 旧バージョンの VGM
+  if (VGMinfo.Version < 0x151 || VGMinfo.DataOffset < 0x78) {
+    return;
+  }
 
   // 初期バッファ補充
   f_lseek(&fil, VGMinfo.DataOffset);
