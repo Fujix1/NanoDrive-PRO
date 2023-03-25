@@ -192,7 +192,9 @@ u_int8_t FMChip::set_register(byte addr, byte data, boolean a1=0) {
       Tick.delay_us(10);
       wait+=10;
     } else {  // ADPCM
-      
+      if (addr == 0x08) { // VGM命令で直接データ書き込み
+        Tick.delay_us(28);
+      }
     }
   }
 

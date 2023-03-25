@@ -457,10 +457,13 @@ void vgmReady() {
   if (vgm_ym2608_clock) {
     VGMinfo.DeviceIsYM2608 = true;
     switch (vgm_ym2608_clock) {
+      case 7987200:
       case 7987000:  // 7.987MHz
+      case 0x4079e000: // 7.987200MHz secondary
         SI5351.setFreq(SI5351_7987, 0);
         break;
       case 8000000:  // 8MHz
+      case 0x407a1200: // 8MHz secondary
         SI5351.setFreq(SI5351_8000, 0);
         break;
       default:
@@ -617,6 +620,111 @@ void checkYM2608DRAMType() {
         get_vgm_ui8();
         get_vgm_ui8();
         break;
+      case 0x31:
+      case 0x32:
+      case 0x33:
+      case 0x34:
+      case 0x35:
+      case 0x36:
+      case 0x37:
+      case 0x38:
+      case 0x39:
+      case 0x3a:
+      case 0x3b:
+      case 0x3c:
+      case 0x3d:
+      case 0x3e:
+      case 0x3f:
+        get_vgm_ui8();
+        break;
+      case 0x40:
+      case 0x41:
+      case 0x42:
+      case 0x43:
+      case 0x44:
+      case 0x45:
+      case 0x46:
+      case 0x47:
+      case 0x48:
+      case 0x49:
+      case 0x4a:
+      case 0x4b:
+      case 0x4c:
+      case 0x4d:
+      case 0x4e:
+      case 0x4f:
+      case 0xa1:
+      case 0xa2:
+      case 0xa3:
+      case 0xa4:
+      case 0xa5:
+      case 0xa6:
+      case 0xa7:
+      case 0xa8:
+      case 0xa9:
+      case 0xaa:
+      case 0xab:
+      case 0xac:
+      case 0xad:
+      case 0xae:
+      case 0xaf:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0xc9:
+      case 0xca:
+      case 0xcb:
+      case 0xcc:
+      case 0xcd:
+      case 0xce:
+      case 0xcf:
+      case 0xd7:
+      case 0xd8:
+      case 0xd9:
+      case 0xda:
+      case 0xdb:
+      case 0xdc:
+      case 0xdd:
+      case 0xde:
+      case 0xdf:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0xe2:
+      case 0xe3:
+      case 0xe4:
+      case 0xe5:
+      case 0xe6:
+      case 0xe7:
+      case 0xe8:
+      case 0xe9:
+      case 0xea:
+      case 0xeb:
+      case 0xec:
+      case 0xed:
+      case 0xee:
+      case 0xf0:
+      case 0xf1:
+      case 0xf2:
+      case 0xf3:
+      case 0xf4:
+      case 0xf5:
+      case 0xf6:
+      case 0xf7:
+      case 0xf8:
+      case 0xf9:
+      case 0xfa:
+      case 0xfb:
+      case 0xfc:
+      case 0xfd:
+      case 0xfe:
+      case 0xff:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
     }
   }
 }
@@ -679,6 +787,8 @@ void vgmProcess() {
       case 0x57:  // YM2608 port 1
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
+        //if (reg == 0x02) dat = 0;
+        //if (reg == 0x03) dat = 0;
         compensation += FM.set_register(reg, dat, 1);
         unmutenow = true;
         break;
@@ -851,6 +961,111 @@ void vgmProcess() {
         break;
       case 0x00:
         break;
+      case 0x31:
+      case 0x32:
+      case 0x33:
+      case 0x34:
+      case 0x35:
+      case 0x36:
+      case 0x37:
+      case 0x38:
+      case 0x39:
+      case 0x3a:
+      case 0x3b:
+      case 0x3c:
+      case 0x3d:
+      case 0x3e:
+      case 0x3f:
+        get_vgm_ui8();
+        break;
+      case 0x40:
+      case 0x41:
+      case 0x42:
+      case 0x43:
+      case 0x44:
+      case 0x45:
+      case 0x46:
+      case 0x47:
+      case 0x48:
+      case 0x49:
+      case 0x4a:
+      case 0x4b:
+      case 0x4c:
+      case 0x4d:
+      case 0x4e:
+      case 0x4f:
+      case 0xa1:
+      case 0xa2:
+      case 0xa3:
+      case 0xa4:
+      case 0xa5:
+      case 0xa6:
+      case 0xa7:
+      case 0xa8:
+      case 0xa9:
+      case 0xaa:
+      case 0xab:
+      case 0xac:
+      case 0xad:
+      case 0xae:
+      case 0xaf:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0xc9:
+      case 0xca:
+      case 0xcb:
+      case 0xcc:
+      case 0xcd:
+      case 0xce:
+      case 0xcf:
+      case 0xd7:
+      case 0xd8:
+      case 0xd9:
+      case 0xda:
+      case 0xdb:
+      case 0xdc:
+      case 0xdd:
+      case 0xde:
+      case 0xdf:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
+      case 0xe2:
+      case 0xe3:
+      case 0xe4:
+      case 0xe5:
+      case 0xe6:
+      case 0xe7:
+      case 0xe8:
+      case 0xe9:
+      case 0xea:
+      case 0xeb:
+      case 0xec:
+      case 0xed:
+      case 0xee:
+      case 0xf0:
+      case 0xf1:
+      case 0xf2:
+      case 0xf3:
+      case 0xf4:
+      case 0xf5:
+      case 0xf6:
+      case 0xf7:
+      case 0xf8:
+      case 0xf9:
+      case 0xfa:
+      case 0xfb:
+      case 0xfc:
+      case 0xfd:
+      case 0xfe:
+      case 0xff:
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        get_vgm_ui8();
+        break;
       default:
         break;
     }
@@ -973,7 +1188,11 @@ void s98Ready() {
 
   // Tag info
   if (s98info.FormatVersion == 1 || s98info.FormatVersion == 2) { // old s98
-    s98tag.title = "s98 version 1 and 2 file";
+    if (s98info.FormatVersion == 1) {
+      s98tag.title = "s98 version 1 file";
+    } else {
+      s98tag.title = "s98 version 2 file";
+    }
     s98tag.artist = "";
     s98tag.game = "";
     s98tag.year = "";
@@ -1224,7 +1443,7 @@ void s98Process() {
 
     if (s98info.Sync > 1) {
       while ((get_timer_value() - startTime) <= s98info.Sync * s98info.OneCycle) {
-        if (s98info.Sync > 0) {
+        //if (s98info.Sync > 1) {
           switch (Keypad.checkButton()) {
             case btnNONE:
             break;
@@ -1238,7 +1457,7 @@ void s98Process() {
             case btnSELECT:
               return;
           }
-        }
+        //}
       }
       timeUpdateFlag = true;
       s98info.Sync = 0;
