@@ -787,8 +787,6 @@ void vgmProcess() {
       case 0x57:  // YM2608 port 1
         reg = get_vgm_ui8();
         dat = get_vgm_ui8();
-        //if (reg == 0x02) dat = 0;
-        //if (reg == 0x03) dat = 0;
         compensation += FM.set_register(reg, dat, 1);
         unmutenow = true;
         break;
