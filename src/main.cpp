@@ -43,7 +43,9 @@ void setup() {
   FM.reset();  // FMリセット
 
   Tick.delay_ms(200);  // SDカード安定用
-  sd_init();           // ファイル初期化
+  if (sd_init() == false) { // ファイル初期化
+    exit(0);
+  }
 
   openFolder(0);
   filePlay(0);
