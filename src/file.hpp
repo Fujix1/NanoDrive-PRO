@@ -19,6 +19,71 @@ typedef enum {
 }  NDFileType;
 
 
+// VGM Status Info
+typedef struct {
+  uint32_t Version;
+  uint32_t DataOffset;
+  uint32_t LoopOffset;
+  uint32_t Delay;
+  uint32_t Gd3offset;
+  boolean DeviceIsYM2608 = false;
+  boolean DRAMIs8bits = false;
+} VGMInfoStruct;
+extern VGMInfoStruct VGMinfo;
+
+// Device Enum
+typedef enum {
+  NONE = 0,
+  YM2149,
+  YM2203,
+  YM2612,
+  YM2608,
+  YM2151,
+  YM2413,
+  YM3526,
+  YMF262,
+  AY38910,
+  SN76489
+} DeviceType;
+
+// S98 device info
+typedef struct {
+  uint32_t DeviceType = 0;
+  uint32_t Clock = 0;
+  uint32_t Pan = 0;
+} S98DeviceInfoStruct;
+
+// S98 tag info
+typedef struct {
+  String title;
+  String artist;
+  String game;
+  String year;
+  String genre;
+  String comment;
+  String copyright;
+  String s98by;
+  String system;
+  boolean isUTF8 = false;
+} S98TagStruct;
+
+// S98 info
+typedef struct {
+  char FormatVersion;
+  uint32_t TimerInfo;
+  uint32_t TimerInfo2;
+  uint32_t Compressing;
+  uint32_t TAGAddress;
+  uint32_t DumpAddress;
+  uint32_t LoopAddress;
+  uint32_t DeviceCount;
+  S98DeviceInfoStruct *DeviceInfo;
+
+  uint32_t OneCycle;
+  uint32_t Sync;
+} S98InfoStruct;
+
+
 extern boolean fileLoaded;    // データが読み込まれた状態か
 extern NDFileType fileType;   // プレイ中のファイルの種類
 
@@ -42,5 +107,6 @@ void        vgmProcess();
 
 void        s98Ready();
 void        s98Process();
+
 
 #endif

@@ -1,4 +1,5 @@
 #include "FM.hpp"
+#include "file.hpp"
 extern "C" {
 #include "lcd/lcd.h"
 }
@@ -192,8 +193,12 @@ u_int8_t FMChip::set_register(byte addr, byte data, boolean a1=0) {
       Tick.delay_us(10);
       wait+=10;
     } else {  // ADPCM
-      if (addr == 0x08) { // VGM命令で直接データ書き込み(1-bit)
-        Tick.delay_us(22);
+      if (addr == 0x08) { // ADPCM データを DRAM に転送
+        if (VGMinfo.DRAMIs8bits) {
+          Tick.delay_us(1); // 8 bit はウェイトほぼ不要（0でも動く）
+        } else {
+          Tick.delay_us(24); // 1 bit アクセスは遅い （最低20くらい・DRAMによって異なる）
+        }
       }
     }
   }

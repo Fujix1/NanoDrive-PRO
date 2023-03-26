@@ -2,14 +2,13 @@
  * Open file and process VGM data
  */
 #include "file.hpp"
-
 #include "Display/Display.hpp"
 #include "FM/FM.hpp"
 #include "PT2257/PT2257.hpp"
 #include "SI5351/SI5351.hpp"
 #include "keypad/keypad.hpp"
 
-#define BUFFERCAPACITY 5120  // VGMの読み込み単位（バイト）
+#define BUFFERCAPACITY 8192  // VGMの読み込み単位（バイト）
 #define MAXLOOP 2            // 次の曲いくループ数
 #define ONE_CYCLE 612u       // 速度
                              // 22.67573696145125 * 27 = 612.24
@@ -48,72 +47,14 @@ FIL fil;
 FILINFO fno;
 FRESULT fr;
 
-// VGM Status
-typedef struct {
-  uint32_t Version;
-  uint32_t DataOffset;
-  uint32_t LoopOffset;
-  uint32_t Delay;
-  uint32_t Gd3offset;
-  boolean DeviceIsYM2608 = false;
-  boolean DRAMIs8bits = false;
-} VGMInfoStruct;
+// VGM Status Info
 VGMInfoStruct VGMinfo;
 
-typedef enum {
-  NONE = 0,
-  YM2149,
-  YM2203,
-  YM2612,
-  YM2608,
-  YM2151,
-  YM2413,
-  YM3526,
-  YMF262,
-  AY38910,
-  SN76489
-} DeviceType;
-
-// S98 device info
-typedef struct {
-  uint32_t DeviceType = 0;
-  uint32_t Clock = 0;
-  uint32_t Pan = 0;
-} S98DeviceInfoStruct;
-
 // S98 tag info
-typedef struct {
-  String title;
-  String artist;
-  String game;
-  String year;
-  String genre;
-  String comment;
-  String copyright;
-  String s98by;
-  String system;
-  boolean isUTF8 = false;
-} S98TagStruct;
 S98TagStruct s98tag;
 
-// S98 info
-typedef struct {
-  char FormatVersion;
-  uint32_t TimerInfo;
-  uint32_t TimerInfo2;
-  uint32_t Compressing;
-  uint32_t TAGAddress;
-  uint32_t DumpAddress;
-  uint32_t LoopAddress;
-  uint32_t DeviceCount;
-  S98DeviceInfoStruct *DeviceInfo;
-
-  uint32_t OneCycle;
-  uint32_t Sync;
-} S98InfoStruct;
+// S98 Status Info
 S98InfoStruct s98info;
-
-
 
 //---------------------------------------------------------------
 // Init and open SD card
@@ -882,16 +823,8 @@ void vgmProcess() {
             FM.set_register(0x04, 0xff, 1);
             FM.set_register(0x05, 0xff, 1);
 
-            uint8_t wait = 0;
-            if (VGMinfo.DRAMIs8bits) {
-              wait = 1;  // 8 bit はウェイトほぼ不要
-            } else {
-              wait = 28;  // 1 bit アクセスは遅い
-            }
-
             for (uint32_t i = 0; i < (dataSize - 0x8); i++) {
               FM.set_register(0x08, get_vgm_ui8(), 1);  // データ書き込み
-              Tick.delay_us(wait);
             }
 
             FM.set_register(0x00, 0x00, 1);  // 終了プロセス
@@ -1120,6 +1053,7 @@ void s98Ready() {
   fileLoaded = false;
   songLoop = 0;
   s98info.Sync = 0;
+  VGMinfo.DRAMIs8bits = true; // S98側のウェイトに依存
 
   // magic
   if (((get_vgm_ui8_at(0x00) != 0x53) || (get_vgm_ui8_at(0x01) != 0x39) ||
