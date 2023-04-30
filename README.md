@@ -28,6 +28,12 @@ This project is an attempt to play vgm (and s98) files using the YM2608 and YM21
 
 [Schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/11007896/Schematics.pdf)
 
+## 基板 / PCB for Kicad 7
+[https://github.com/Fujix1/NanoDriveProPCB](https://github.com/Fujix1/NanoDriveProPCB)
+
+## 開発中動画
+[![alt設定](http://img.youtube.com/vi/12O3EOVFb7E/0.jpg)](https://www.youtube.com/watch?v=12O3EOVFb7E)
+
 ## マニュアル / Japanese Manual
 
 [NanoDriveYM2608.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/11037609/NanoDriveYM2608.pdf)
