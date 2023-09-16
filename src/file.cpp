@@ -1311,6 +1311,7 @@ void s98Process() {
 
     uint8_t addr;
     uint8_t data;
+    s98info.Sync = 0;
 
     if (timeUpdateFlag) {
       startTime = get_timer_value();
@@ -1341,10 +1342,10 @@ void s98Process() {
         s98info.Sync += 1;
         break;
       case 0xFE: {  // n sync wait
-        data = get_vgm_ui8();
         int s = 0, n = 0, i = 0;
         do {
           ++i;
+          data = get_vgm_ui8();
           n |= (data & 0x7f) << s;
           s += 7;
         } while (data & 0x80);
@@ -1373,7 +1374,8 @@ void s98Process() {
         break;
     }
 
-    if (s98info.Sync > 1) {
+
+    if (s98info.Sync > 0) {
       while ((get_timer_value() - startTime) <= s98info.Sync * s98info.OneCycle) {
         //if (s98info.Sync > 1) {
           switch (Keypad.checkButton()) {

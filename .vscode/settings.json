@@ -4,5 +4,6 @@
     "bmp.h": "c",
     "oledfont.h": "c",
     "limits": "cpp"
-  }
+  },
+  "cmake.configureOnOpen": false
 }

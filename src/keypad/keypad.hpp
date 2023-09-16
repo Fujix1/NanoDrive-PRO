@@ -36,7 +36,7 @@ extern "C" {
 }
 #include "tick.hpp"
 
-#define BUTTON_INTERVAL 64   // ボタン取得間隔 ms
+#define BUTTON_INTERVAL 100   // ボタン取得間隔 ms
 #define REPEAT_DELAY 400     // ボタンリピート開始まで ms
 
 typedef enum { 
