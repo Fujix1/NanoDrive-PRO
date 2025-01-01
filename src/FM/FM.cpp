@@ -1,4 +1,5 @@
 #include "FM.hpp"
+
 #include "file.hpp"
 extern "C" {
 #include "lcd/lcd.h"
@@ -36,9 +37,7 @@ extern "C" {
 #define CS1_HIGH (GPIO_BOP(GPIOB) = GPIO_PIN_5)
 #define CS1_LOW (GPIO_BC(GPIOB) = GPIO_PIN_5)
 
-
 void FMChip::begin() {
-
   pinMode(D0, OUTPUT);
   pinMode(D1, OUTPUT);
   pinMode(D2, OUTPUT);
@@ -55,7 +54,6 @@ void FMChip::begin() {
 
   pinMode(CS0, OUTPUT);
   pinMode(CS1, OUTPUT);
-
 }
 
 void FMChip::reset(void) {
@@ -75,17 +73,13 @@ void FMChip::reset(void) {
 void FMChip::set_output(byte data) {
   // LOW
   GPIO_BC(GPIOC) = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  GPIO_BC(GPIOA) =
-      GPIO_PIN_4 | GPIO_PIN_3 | GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0;
+  GPIO_BC(GPIOA) = GPIO_PIN_4 | GPIO_PIN_3 | GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0;
   // HIGH
-  GPIO_BOP(GPIOC) =
-      ((data & 0b1) << 15) | ((data & 0b10) << 13) | ((data & 0b100) << 11);
+  GPIO_BOP(GPIOC) = ((data & 0b1) << 15) | ((data & 0b10) << 13) | ((data & 0b100) << 11);
   GPIO_BOP(GPIOA) = (data & 0b11111000) >> 3;  // D3, D4 ,D5, D6, D7
 }
 
-u_int8_t FMChip::set_register(byte addr, byte data, boolean a1=0) {
-  uint8_t wait = 0;
-
+void FMChip::set_register(byte addr, byte data, boolean a1 = 0) {
   /* リズムオフ
   if (a1==0 && addr==0x10) {
     data = 0x80;
@@ -130,24 +124,22 @@ u_int8_t FMChip::set_register(byte addr, byte data, boolean a1=0) {
 
   // 書き込み後の待ち時間
   if (a1 == 0) {
-    if (addr >= 0 && addr <= 0x0f) { // SSG
+    if (addr >= 0 && addr <= 0x0f) {  // SSG
 
-    } else { // リズム + FM 1-3
+    } else {  // リズム + FM 1-3
       Tick.delay_us(10);
-      wait+=10;
-    } 
+    }
   } else {
-    if (addr >= 0x30 && addr <= 0xb6) { // FM 4-6
+    if (addr >= 0x30 && addr <= 0xb6) {  // FM 4-6
       Tick.delay_us(10);
-      wait+=10;
-    } else {      // ADPCM
-      //Tick.delay_us(5);
-    } 
+    } else {  // ADPCM
+      // Tick.delay_us(5);
+    }
   }
 
   //---------------------------------------
   // data
-  
+
   A0_HIGH;
   Tick.delay_500ns();
   // WR_LOW -> WR_HIGH:  Tww 200ns
@@ -155,7 +147,7 @@ u_int8_t FMChip::set_register(byte addr, byte data, boolean a1=0) {
   WR_LOW;
   Tick.delay_500ns();
   set_output(data);
-  Tick.delay_500ns(); //  Tww 最小 200ns
+  Tick.delay_500ns();  //  Tww 最小 200ns
   WR_HIGH;
 
   /*
@@ -166,38 +158,37 @@ u_int8_t FMChip::set_register(byte addr, byte data, boolean a1=0) {
              $11 - $1D  83 = 10.375 us
     ADPCM    $00 - $10   0
   */
- 
+
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {  // SSG
       Tick.delay_us(16);
-      wait+=16;
+
     } else if (addr >= 0x21 && addr <= 0x9e) {  // FM 1
       Tick.delay_us(16);
-      wait+=16;
+
     } else if (addr >= 0xa0 && addr <= 0xb6) {  // FM 2
       Tick.delay_us(10);
-      wait+=10;
+
     } else if (addr == 0x10) {  // Rythm 1
       Tick.delay_us(77);
-      wait+=77;
-    } else { // Rythm 2
+
+    } else {  // Rythm 2
       Tick.delay_us(16);
-      wait+=16;
     }
   } else {
     if (addr >= 0x21 && addr <= 0x9e) {  // FM
-      Tick.delay_us(16); 
-      wait+=16;
-    } else if (addr >= 0xa0 && addr <= 0xb6) { // FM
+      Tick.delay_us(16);
+
+    } else if (addr >= 0xa0 && addr <= 0xb6) {  // FM
       Tick.delay_us(10);
-      wait+=10;
-    } else {  // ADPCM
-      if (addr == 0x08) { // ADPCM データを DRAM に転送
+
+    } else {               // ADPCM
+      if (addr == 0x08) {  // ADPCM データを DRAM に転送
         if (VGMinfo.DRAMIs8bits) {
-          Tick.delay_us(1); // 8 bit はウェイトほぼ不要（0でも動く）
+          Tick.delay_us(1);  // 8 bit はウェイトほぼ不要（0でも動く）
         } else {
-          Tick.delay_us(24); // 1 bit アクセスは遅い （最低20くらい・DRAMによって異なる）
+          Tick.delay_us(24);  // 1 bit アクセスは遅い （最低20くらい・DRAMによって異なる）
         }
       }
     }
@@ -206,24 +197,16 @@ u_int8_t FMChip::set_register(byte addr, byte data, boolean a1=0) {
   CS0_HIGH;
   A0_LOW;
   A1_LOW;
-  if (wait>=24) {
-    return wait-24;
-  } else {
-    return 0;
-  }
 }
 
-u_int8_t FMChip::set_register_opm(byte addr, byte data) {
-  uint8_t wait = 0;
-
+void FMChip::set_register_opm(byte addr, byte data) {
   set_output(addr);
   A0_LOW;
   CS1_LOW;
   WR_LOW;
   Tick.delay_500ns();
   WR_HIGH;
-  Tick.delay_us(4); // 最低 3us
-  wait+=4;
+  Tick.delay_us(4);  // 最低 3us
 
   A0_HIGH;
   Tick.delay_500ns();
@@ -232,16 +215,10 @@ u_int8_t FMChip::set_register_opm(byte addr, byte data) {
   set_output(data);
   Tick.delay_500ns();
   WR_HIGH;
-  Tick.delay_us(20); // 最低 18us
-  wait+=20;
+  Tick.delay_us(20);  // 最低 18us
+
   CS1_HIGH;
   A0_LOW;
-
-  if (wait>=22) {
-    return wait-22;
-  } else {
-    return 0;
-  }
 }
 
 FMChip FM;
