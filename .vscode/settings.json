@@ -1,9 +1,13 @@
 {
   "files.associations": {
+    "*.page-template": "vue",
+    "*.layout-template": "vue",
+    "*.vue": "vue",
     "type_traits": "cpp",
     "bmp.h": "c",
     "oledfont.h": "c",
-    "limits": "cpp"
+    "limits": "cpp",
+    "stdexcept": "cpp"
   },
   "cmake.configureOnOpen": false
 }

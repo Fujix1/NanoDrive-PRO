@@ -316,7 +316,6 @@ void vgmReady() {
     gd3[0].concat(" / ");
     gd3[0].concat(gd3[2]);
     Display.set2(gd3[0]);  // 曲名表示＋ゲーム名
-
     Display.set3(gd3[6]);  // システム名
     Display.set4(gd3[4]);
   }
@@ -492,22 +491,7 @@ void checkYM2608DRAMType() {
         }
         break;
       }
-      case 0x70:
-      case 0x71:
-      case 0x72:
-      case 0x73:
-      case 0x74:
-      case 0x75:
-      case 0x76:
-      case 0x77:
-      case 0x78:
-      case 0x79:
-      case 0x7A:
-      case 0x7B:
-      case 0x7C:
-      case 0x7D:
-      case 0x7E:
-      case 0x7F:
+      case 0x70 ... 0x7F:
         break;
       case 0x90:  // DAC Stream
         get_vgm_ui8();
@@ -549,106 +533,22 @@ void checkYM2608DRAMType() {
         get_vgm_ui8();
         get_vgm_ui8();
         break;
-      case 0x31:
-      case 0x32:
-      case 0x33:
-      case 0x34:
-      case 0x35:
-      case 0x36:
-      case 0x37:
-      case 0x38:
-      case 0x39:
-      case 0x3a:
-      case 0x3b:
-      case 0x3c:
-      case 0x3d:
-      case 0x3e:
-      case 0x3f:
+      case 0x31 ... 0x3f:
         get_vgm_ui8();
         break;
-      case 0x40:
-      case 0x41:
-      case 0x42:
-      case 0x43:
-      case 0x44:
-      case 0x45:
-      case 0x46:
-      case 0x47:
-      case 0x48:
-      case 0x49:
-      case 0x4a:
-      case 0x4b:
-      case 0x4c:
-      case 0x4d:
-      case 0x4e:
-      case 0x4f:
-      case 0xa1:
-      case 0xa2:
-      case 0xa3:
-      case 0xa4:
-      case 0xa5:
-      case 0xa6:
-      case 0xa7:
-      case 0xa8:
-      case 0xa9:
-      case 0xaa:
-      case 0xab:
-      case 0xac:
-      case 0xad:
-      case 0xae:
-      case 0xaf:
+      case 0x40 ... 0x4F:
+      case 0xa1 ... 0xaf:
         get_vgm_ui8();
         get_vgm_ui8();
         break;
-      case 0xc9:
-      case 0xca:
-      case 0xcb:
-      case 0xcc:
-      case 0xcd:
-      case 0xce:
-      case 0xcf:
-      case 0xd7:
-      case 0xd8:
-      case 0xd9:
-      case 0xda:
-      case 0xdb:
-      case 0xdc:
-      case 0xdd:
-      case 0xde:
-      case 0xdf:
+      case 0xc9 ... 0xcf:
+      case 0xd7 ... 0xdf:
         get_vgm_ui8();
         get_vgm_ui8();
         get_vgm_ui8();
         break;
-      case 0xe2:
-      case 0xe3:
-      case 0xe4:
-      case 0xe5:
-      case 0xe6:
-      case 0xe7:
-      case 0xe8:
-      case 0xe9:
-      case 0xea:
-      case 0xeb:
-      case 0xec:
-      case 0xed:
-      case 0xee:
-      case 0xf0:
-      case 0xf1:
-      case 0xf2:
-      case 0xf3:
-      case 0xf4:
-      case 0xf5:
-      case 0xf6:
-      case 0xf7:
-      case 0xf8:
-      case 0xf9:
-      case 0xfa:
-      case 0xfb:
-      case 0xfc:
-      case 0xfd:
-      case 0xfe:
-      case 0xff:
+      case 0xe2 ... 0xee:
+      case 0xf0 ... 0xff:
         get_vgm_ui8();
         get_vgm_ui8();
         get_vgm_ui8();
@@ -728,8 +628,10 @@ bool vgmProcessMain() {
     case 0x54:  // YM2151
       reg = get_vgm_ui8();
       dat = get_vgm_ui8();
-      FM.set_register_opm(reg, dat);
-      unmutenow = true;
+      if (reg != 0x14) {  // TIM_CONF 以外
+        FM.set_register_opm(reg, dat);
+        unmutenow = true;
+      }
       break;
     case 0x55:  // YM2203_0
       reg = get_vgm_ui8();
@@ -747,7 +649,11 @@ bool vgmProcessMain() {
       reg = get_vgm_ui8();
       dat = get_vgm_ui8();
       FM.set_register(reg, dat, 1);
-      unmutenow = true;
+      if (reg == 0x08) {                // 最適化されていないPCMデータ
+        _vgmStart = get_timer_value();  // PCMデータ送信後にタイマーをリセット
+      } else {
+        unmutenow = true;
+      }
       break;
     case 0x5A:  // YM3812
       // reg = get_vgm_ui8();
@@ -758,19 +664,16 @@ bool vgmProcessMain() {
     // Wait n samples, n can range from 0 to 65535 (approx 1.49 seconds)
     case 0x61: {
       uint16_t samples = get_vgm_ui16();
-
       _vgmSamples += samples;
       break;
     }
     // wait 735 samples (60th of a second)
     case 0x62:
-
       _vgmSamples += 735;
       break;
 
     // wait 882 samples (50th of a second)
     case 0x63:
-
       _vgmSamples += 882;
       break;
 
@@ -850,6 +753,7 @@ bool vgmProcessMain() {
           FM.set_register(0x00, 0x00, 1);  // 終了プロセス
           break;
       }
+      _vgmStart = get_timer_value();  // PCMデータ送信後にタイマーをリセット
     } break;
 
     case 0x70 ... 0x7f:
@@ -925,8 +829,7 @@ bool vgmProcessMain() {
   }
 
   if (PT2257.muted && unmutenow) {
-    PT2257.reset(atte);             // ミュート解除
-    _vgmStart = get_timer_value();  // PCMデータ送信後にタイマーをリセット
+    PT2257.reset(atte);  // ミュート解除
   }
 
   return true;

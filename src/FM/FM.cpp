@@ -162,7 +162,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1 = 0) {
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {  // SSG
-      Tick.delay_us(16);
+      // Tick.delay_us(16);
 
     } else if (addr >= 0x21 && addr <= 0x9e) {  // FM 1
       Tick.delay_us(16);
@@ -186,7 +186,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1 = 0) {
     } else {               // ADPCM
       if (addr == 0x08) {  // ADPCM データを DRAM に転送
         if (VGMinfo.DRAMIs8bits) {
-          Tick.delay_us(1);  // 8 bit はウェイトほぼ不要（0でも動く）
+          // Tick.delay_us(1);  // 8 bit はウェイトほぼ不要（0でも動く）
         } else {
           Tick.delay_us(24);  // 1 bit アクセスは遅い （最低20くらい・DRAMによって異なる）
         }
