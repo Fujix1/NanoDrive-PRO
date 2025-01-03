@@ -842,7 +842,7 @@ void s98Ready() {
   fileLoaded = false;
   songLoop = 0;
   s98info.Sync = 0;
-  VGMinfo.DRAMIs8bits = true;  // S98側のウェイトに依存
+  VGMinfo.DRAMIs8bits = true;
 
   // magic
   if (((get_vgm_ui8_at(0x00) != 0x53) || (get_vgm_ui8_at(0x01) != 0x39) || (get_vgm_ui8_at(0x02) != 0x38))) {
@@ -853,7 +853,7 @@ void s98Ready() {
 
   switch (s98info.FormatVersion) {
     case 0:
-    case 1:;
+    case 1:
       s98info.TimerInfo = get_vgm_ui32_at(0x04);
       if (s98info.TimerInfo == 0) s98info.TimerInfo = 10;
       s98info.TimerInfo2 = 1000;
@@ -861,6 +861,7 @@ void s98Ready() {
       s98info.DumpAddress = get_vgm_ui32_at(0x14);
       s98info.LoopAddress = get_vgm_ui32_at(0x18);
       s98info.DeviceCount = 0;
+
       break;
     case 2:
       s98info.TimerInfo = get_vgm_ui32_at(0x04);
@@ -1111,6 +1112,7 @@ void s98Process() {
           FM.set_register_opm(addr, data);
         } else {
           FM.set_register(addr, data, 0);
+          Tick.delay_us(64);
         }
         break;
       case 0x01:
@@ -1119,7 +1121,15 @@ void s98Process() {
         if (s98info.DeviceInfo[1].DeviceType == YM2151) {
           FM.set_register_opm(addr, data);
         } else {
-          FM.set_register(addr, data, 1);
+          if (addr == 0x08) {
+            FM.set_register(0x08, data, 1);
+          } else {
+            if (addr == 0x01) {
+              VGMinfo.DRAMIs8bits = ((data & 0b10) == 0b10);
+            }
+            FM.set_register(addr, data, 1);
+            Tick.delay_us(64);
+          }
         }
         break;
       case 0xFF:  // 1 sync wait
