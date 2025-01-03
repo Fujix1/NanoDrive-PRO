@@ -2,7 +2,7 @@
  *  Longan Nano VGM player
  *  YM2608 and YM2151
  *  by Fujix 2023 - 2025
- *  Version 2.0.1
+ *  Version 2.0.2
  */
 
 #include <Arduino.h>
