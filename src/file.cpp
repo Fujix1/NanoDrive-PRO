@@ -1111,8 +1111,12 @@ void s98Process() {
         if (s98info.DeviceInfo[0].DeviceType == YM2151) {
           FM.set_register_opm(addr, data);
         } else {
-          FM.set_register(addr, data, 0);
-          Tick.delay_us(64);
+          if (addr == 0x24 || addr == 0x25 || addr == 0x26) {  // タイマー設定
+          } else if (addr >= 0x00 && addr <= 0x0F) {           // SSG
+            FM.set_register(addr, data, 0);
+          } else {
+            FM.set_register(addr, data, 0);
+          }
         }
         break;
       case 0x01:
@@ -1128,7 +1132,6 @@ void s98Process() {
               VGMinfo.DRAMIs8bits = ((data & 0b10) == 0b10);
             }
             FM.set_register(addr, data, 1);
-            Tick.delay_us(64);
           }
         }
         break;
