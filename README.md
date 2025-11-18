@@ -28,6 +28,10 @@ This project is an attempt to play vgm (and s98) files using the YM2608 and YM21
 
 [Schematics.pdf](https://github.com/Fujix1/NanoDrive-PRO/files/11007896/Schematics.pdf)
 
+### 回路のポイント
+この回路はオペアンプによる「反転加算回路」を使用しています。ミキシングポイントが仮想接地となるため、抵抗混合（パッシブミキサー）とは異なり、モノラルラインを介して左右のステレオ信号が混信（クロストーク）することはありません。
+
+
 ## 基板 / PCB for Kicad 7
 [https://github.com/Fujix1/NanoDriveProPCB](https://github.com/Fujix1/NanoDriveProPCB)
 
