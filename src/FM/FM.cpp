@@ -68,6 +68,10 @@ void FMChip::reset(void) {
   CS0_HIGH;
   CS1_HIGH;
   Tick.delay_us(100);
+
+  // /IC reset alone does not reliably initialize the built-in rhythm state.
+  // Explicitly dump all six rhythm channels before playback starts.
+  set_register(0x10, 0xbf, 0);
 }
 
 void FMChip::set_output(byte data) {

@@ -1,8 +1,8 @@
 /*
  *  Longan Nano VGM player
  *  YM2608 and YM2151
- *  by Fujix 2023 - 2025
- *  Version 2.0.2
+ *  by Fujix 2023 - 2026
+ *  Version 2.0.3
  */
 
 #include <Arduino.h>
@@ -25,21 +25,21 @@ void setup() {
   gpio_pin_remap_config(GPIO_SWJ_NONJTRST_REMAP,
                         ENABLE);  // PB4 のリマップを有効化
 
-  LCD_ShowString(0, 0, (u8 *)("Initializing I2C.        "), WHITE);
+  LCD_ShowString(0, 0, (u8*)("Initializing I2C.        "), WHITE);
   Wire.begin();  // I2C 初期化
 
   Tick.delay_ms(64);
 
-  LCD_ShowString(0, 0, (u8 *)("Initializing SI5351.     "), WHITE);
+  LCD_ShowString(0, 0, (u8*)("Initializing SI5351.     "), WHITE);
   SI5351.begin();  // SI5351 起動
   SI5351.setFreq(SI5351_8000, 0);
   SI5351.setFreq(SI5351_3579, 1);
   SI5351.enableOutputs(true);
 
-  LCD_ShowString(0, 0, (u8 *)("Initializing PT2257.     "), WHITE);
+  LCD_ShowString(0, 0, (u8*)("Initializing PT2257.     "), WHITE);
   PT2257.begin();  // PT2257 初期化
 
-  LCD_ShowString(0, 0, (u8 *)("Starting FM.             "), WHITE);
+  LCD_ShowString(0, 0, (u8*)("Starting FM.             "), WHITE);
   FM.begin();
   FM.reset();  // FMリセット
 
