@@ -166,7 +166,7 @@ void FMChip::set_register(byte addr, byte data, boolean a1 = 0) {
   // 書き込み後の待ち時間
   if (a1 == 0) {
     if (addr >= 0 && addr <= 0x0f) {  // SSG
-      // Tick.delay_us(16);
+      Tick.delay_us(16);
 
     } else if (addr >= 0x21 && addr <= 0x9e) {  // FM 1
       Tick.delay_us(16);
