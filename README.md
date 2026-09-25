@@ -22,6 +22,25 @@ This project is an attempt to play vgm (and s98) files using the YM2608 and YM21
 5. Per-folder volume adjustment by -2 to -12dB.
 6. Pre-mounted SOP DRAM, inverter IC and switch IC.
 
+## ファームウェア書き込み方法
+
+コンパイル済みファーム / Precompiled firmware:
+https://github.com/Fujix1/NanoDrive-PRO/blob/master/firmware_v203.bin
+
+ドライバ・転送用公式ツール / Official utilities for Longan Nano. Use "GD32_MCU_Dfu_Tool” to upload the firmware.
+https://dl.sipeed.com/shareURL/others/Longan_nano/Nano/Tools
+
+### 書き込み手順 
+
+1. dfu-util 0.11とZadig 2.9を用意
+2. BOOT0を押しながらUSB接続→1秒後に離す
+3. Zadig 2.9でGD32V(28E9:0189)→WinUSB
+4. dfu-util -lで認識確認
+5. dfu-util -d 28e9:0189 -a 0 -s 0x08000000 -D firmware_v203.bin
+6. File downloaded successfully後、RESETを押す
+
+この手順は [Aki_Kmy](https://x.com/Aki_Kmy) さんにまとめていただきました。
+
 ## 回路図 / Schematics
 
 ![schematics](https://user-images.githubusercontent.com/13434151/226096334-05bf788d-e2b8-44ad-8860-5a59de54a3fd.png)
